@@ -1,0 +1,6 @@
+.DS_Store
+outputs/runner-recovery/
+*.zip
+*.crx
+*.pem
+

@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Runner Shortcut Hub",
+  "description": "A sci-fi categorized shortcut dashboard for Chrome new tabs.",
+  "version": "0.3.9",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data:;"
+  },
+  "permissions": [
+    "favicon",
+    "storage"
+  ]
+}

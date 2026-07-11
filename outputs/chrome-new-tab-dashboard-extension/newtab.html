@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Runner Shortcut Hub</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="搜索和状态">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <p class="kicker">RUNNER / OPS</p>
+            <h1>SHORTCUT HUB</h1>
+            <p id="todayText">READY</p>
+          </div>
+        </div>
+
+        <form id="searchForm" class="search" autocomplete="off">
+          <label class="sr-only" for="searchInput">搜索或输入网址</label>
+          <span id="searchPrefix" class="search-prefix">QUERY</span>
+          <input id="searchInput" type="text" placeholder="SEARCH GOOGLE OR ENTER URL" autofocus>
+          <button id="searchEngineBtn" class="engine-toggle" type="button" title="切换搜索引擎">GO</button>
+          <button id="searchClearBtn" class="search-clear" type="button" title="清除输入" hidden>×</button>
+          <button id="historyToggleBtn" class="history-toggle" type="button" aria-pressed="true" title="隐藏历史记录">历史</button>
+          <button id="searchSubmitBtn" class="search-submit" type="submit" title="搜索">EXEC</button>
+          <div id="searchHistoryPanel" class="search-history-panel" hidden>
+            <div class="search-history-head">
+              <span id="searchPanelTitle">搜索历史</span>
+              <div>
+                <button id="clearHistoryBtn" type="button">清空</button>
+                <button id="hideHistoryBtn" type="button">隐藏</button>
+              </div>
+            </div>
+            <div id="searchSuggestionList" class="search-history-list"></div>
+          </div>
+        </form>
+
+        <div class="system-panel" aria-label="快捷方式统计">
+          <span id="signalLabel">SIGNAL</span>
+          <strong id="shortcutTotal">0</strong>
+          <span id="clustersStatLabel">CLUSTERS</span>
+          <strong id="categoryTotal">0</strong>
+          <button id="nativeHomeBtn" class="lang-toggle native-toggle" type="button">CHROME 原版</button>
+          <button id="languageToggleBtn" class="lang-toggle" type="button">EN</button>
+          <button id="customizeBtn" class="lang-toggle customize-toggle" type="button">自定义</button>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="sidebar" aria-label="分类">
+          <div class="sidebar-head">
+            <span id="clustersLabel">CLUSTERS</span>
+            <button id="addCategoryBtn" class="icon-button" type="button" title="添加分类">+</button>
+          </div>
+          <nav id="categoryList" class="category-list"></nav>
+        </aside>
+
+        <section class="content" aria-live="polite">
+          <div class="content-head">
+            <div>
+              <p id="panelEyebrow" class="eyebrow">SURFACE DATA // ACTIVE PANEL</p>
+              <h2 id="activeCategoryName">AI 工具</h2>
+            </div>
+            <div class="actions">
+              <button id="editCategoryBtn" class="ghost-button" type="button">EDIT CLUSTER</button>
+              <button id="addShortcutBtn" class="primary-button" type="button">ADD NODE</button>
+            </div>
+          </div>
+
+          <div id="shortcutGrid" class="shortcut-grid"></div>
+          <p id="emptyState" class="empty-state" hidden>这个分类还没有快捷方式。</p>
+        </section>
+      </section>
+
+      <section id="classicHome" class="classic-home" hidden>
+        <div class="classic-toolbar">
+          <button id="runnerHomeBtn" class="classic-button" type="button">RUNNER HUB</button>
+          <button id="classicLanguageBtn" class="classic-button" type="button">EN</button>
+        </div>
+
+        <div class="classic-logo" aria-hidden="true">Google</div>
+        <form id="classicSearchForm" class="classic-search" autocomplete="off">
+          <label class="sr-only" for="classicSearchInput">搜索或输入网址</label>
+          <span class="classic-plus">+</span>
+          <input id="classicSearchInput" type="text" placeholder="Ask Google">
+          <button type="submit">AI Mode</button>
+        </form>
+        <div id="classicShortcutGrid" class="classic-shortcuts" aria-label="Chrome 原版快捷方式"></div>
+      </section>
+    </main>
+
+    <dialog id="categoryDialog" class="modal">
+      <form id="categoryForm" method="dialog">
+        <div class="modal-head">
+          <h3 id="categoryDialogTitle">添加分类</h3>
+          <button class="icon-button close-dialog" type="button" value="cancel" title="关闭">×</button>
+        </div>
+        <input type="hidden" id="categoryId">
+        <label>
+          分类名称
+          <input id="categoryNameInput" type="text" maxlength="24" required>
+        </label>
+        <label>
+          分类图标
+          <input id="categoryIconInput" type="text" maxlength="4" placeholder="如 AI / 工 / ⚡">
+        </label>
+        <div class="category-icon-editor">
+          <div id="categoryIconPreview" class="category-icon category-icon-preview">AI</div>
+          <div>
+            <p id="categoryIconImageTitle" class="preview-title">图片图标</p>
+            <p id="categoryIconImageCopy" class="preview-copy">可上传本地图片作为分类 icon。</p>
+          </div>
+          <input id="categoryIconFileInput" type="file" accept="image/*" hidden>
+          <button id="uploadCategoryIconBtn" class="ghost-button" type="button">上传</button>
+          <button id="removeCategoryIconBtn" class="ghost-button" type="button">移除</button>
+        </div>
+        <p id="categoryError" class="form-error" hidden></p>
+        <div class="modal-actions">
+          <button id="moveCategoryUpBtn" class="ghost-button" type="button" hidden>上移</button>
+          <button id="moveCategoryDownBtn" class="ghost-button" type="button" hidden>下移</button>
+          <button id="deleteCategoryBtn" class="danger-button" type="button" hidden>删除</button>
+          <span class="spacer"></span>
+          <button id="cancelCategoryBtn" class="ghost-button close-dialog" type="button">取消</button>
+          <button id="saveCategoryBtn" class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="searchEngineDialog" class="modal search-engine-modal">
+      <div class="modal-head">
+        <h3 id="searchEngineDialogTitle">搜索引擎</h3>
+        <button class="icon-button close-dialog" type="button" value="cancel" title="关闭">×</button>
+      </div>
+      <div id="searchEngineList" class="search-engine-list" role="list"></div>
+      <form id="searchEngineForm" method="dialog" class="search-engine-form">
+        <div class="form-section-head">
+          <h4 id="searchEngineFormTitle">添加自定义搜索引擎</h4>
+          <button id="newSearchEngineBtn" class="ghost-button compact-button" type="button">新增</button>
+        </div>
+        <input id="searchEngineId" type="hidden">
+        <label>
+          名称
+          <input id="searchEngineNameInput" type="text" maxlength="32" required>
+        </label>
+        <label>
+          短标识
+          <input id="searchEngineShortcutInput" type="text" maxlength="8" placeholder="AI">
+        </label>
+        <label>
+          搜索 URL 模板
+          <input id="searchEngineUrlInput" type="url" placeholder="https://example.com/search?q={query}" required>
+        </label>
+        <p id="searchEngineTemplateHelp" class="preview-copy">用 {query} 作为搜索词占位。</p>
+        <p id="searchEngineError" class="form-error" hidden></p>
+        <div class="modal-actions">
+          <button id="deleteSearchEngineBtn" class="danger-button" type="button" hidden>删除</button>
+          <span class="spacer"></span>
+          <button id="cancelSearchEngineBtn" class="ghost-button" type="button">取消</button>
+          <button id="saveSearchEngineBtn" class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="customizeDialog" class="modal customize-modal">
+      <div class="modal-head">
+        <h3 id="customizeDialogTitle">自定义</h3>
+        <button class="icon-button close-dialog" type="button" value="cancel" title="关闭">×</button>
+      </div>
+
+      <section class="customize-section">
+        <h4 id="appearanceTitle">更换窗口外观</h4>
+        <div id="appearanceOptions" class="appearance-options" role="list"></div>
+      </section>
+
+      <section class="customize-section">
+        <h4 id="themeColorTitle">主题色</h4>
+        <div class="theme-color-row">
+          <div id="themeColorOptions" class="theme-color-options" role="list"></div>
+          <label class="custom-color-control">
+            <span id="customThemeColorLabel">自定义颜色</span>
+            <input id="themeColorInput" type="color" value="#d8ff3d">
+          </label>
+        </div>
+      </section>
+
+      <section class="customize-section">
+        <div class="customize-section-head">
+          <h4 id="appearancePresetTitle">外观预设</h4>
+          <div class="preset-actions">
+            <button id="saveAppearancePresetBtn" class="ghost-button" type="button">保存为预设</button>
+            <button id="updateAppearancePresetBtn" class="ghost-button" type="button">更新当前预设</button>
+          </div>
+        </div>
+        <div id="appearancePresetList" class="appearance-preset-list" role="list"></div>
+      </section>
+
+      <section class="customize-section">
+        <h4 id="wallpaperTitle">更换壁纸</h4>
+        <div id="backgroundGrid" class="wallpaper-grid" role="list"></div>
+        <div class="background-tuning">
+          <label class="range-control">
+            <span id="backgroundOpacityLabel">背景不透明度</span>
+            <output id="backgroundOpacityValue">100%</output>
+            <input id="backgroundOpacityInput" type="range" min="15" max="100" step="1" value="100">
+          </label>
+          <label class="range-control">
+            <span id="backgroundBlurLabel">高斯模糊</span>
+            <output id="backgroundBlurValue">0px</output>
+            <input id="backgroundBlurInput" type="range" min="0" max="28" step="1" value="0">
+          </label>
+          <label class="range-control">
+            <span id="panelOpacityLabel">黑色方块不透明度</span>
+            <output id="panelOpacityValue">94%</output>
+            <input id="panelOpacityInput" type="range" min="10" max="100" step="1" value="94">
+          </label>
+          <label class="range-control">
+            <span id="panelBlurLabel">黑色方块高斯模糊</span>
+            <output id="panelBlurValue">0px</output>
+            <input id="panelBlurInput" type="range" min="0" max="36" step="1" value="0">
+          </label>
+        </div>
+        <div class="wallpaper-actions">
+          <input id="backgroundFileInput" type="file" accept="image/*" multiple hidden>
+          <button id="uploadBackgroundBtn" class="ghost-button" type="button">上传背景</button>
+          <button id="removeBackgroundBtn" class="ghost-button" type="button">移除背景</button>
+          <button id="resetAppearanceBtn" class="danger-button" type="button">重置</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog id="shortcutDialog" class="modal">
+      <form id="shortcutForm" method="dialog">
+        <div class="modal-head">
+          <h3 id="shortcutDialogTitle">添加网站</h3>
+          <button class="icon-button close-dialog" type="button" value="cancel" title="关闭">×</button>
+        </div>
+        <input type="hidden" id="shortcutId">
+        <label>
+          名称
+          <input id="shortcutTitleInput" type="text" maxlength="36">
+        </label>
+        <label>
+          网址
+          <input id="shortcutUrlInput" type="url" placeholder="https://example.com" required>
+        </label>
+        <label>
+          分类
+          <select id="shortcutCategorySelect" required></select>
+        </label>
+        <div class="icon-preview-row">
+          <div id="shortcutIconPreview" class="shortcut-icon preview-icon">
+            <span>?</span>
+          </div>
+          <div>
+            <p id="previewTitle" class="preview-title">自动图标</p>
+            <p id="previewCopy" class="preview-copy">保存后会按网址自动匹配网站 icon。</p>
+          </div>
+          <button id="refreshIconBtn" class="ghost-button" type="button">刷新</button>
+        </div>
+        <label>
+          备用底色
+          <input id="shortcutColorInput" type="color" value="#62d5ff">
+        </label>
+        <p id="shortcutError" class="form-error" hidden></p>
+        <div class="modal-actions">
+          <button id="deleteShortcutBtn" class="danger-button" type="button" hidden>删除</button>
+          <span class="spacer"></span>
+          <button id="cancelShortcutBtn" class="ghost-button close-dialog" type="button">取消</button>
+          <button id="saveShortcutBtn" class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
