@@ -1,4 +1,6 @@
 const STORAGE_KEY = "shortcutDashboardData";
+const UI_PREFERENCES_KEY = "runnerShortcutHubUiPreferences";
+const UI_PREFERENCES_VERSION = 1;
 const SEARCH_HISTORY_LIMIT = 12;
 const SEARCH_SUGGESTION_LIMIT = 10;
 const BACKGROUND_IMAGE_MAX_WIDTH = 1440;
@@ -18,7 +20,14 @@ const IMPORTED_APPEARANCE_FIELDS = new Set([
   "backgroundOpacity",
   "backgroundBlur",
   "panelOpacity",
-  "panelBlur"
+  "panelBlur",
+  "iconRadius",
+  "iconRadiusUnit",
+  "cardRadius",
+  "panelRadius",
+  "buttonRadius",
+  "fontScale",
+  "cardDensity"
 ]);
 
 const defaultSearchEngines = [
@@ -32,7 +41,7 @@ const defaultSearchEngines = [
 ];
 
 const defaultData = {
-  locale: "zh",
+  locale: "zh-CN",
   mode: "runner",
   searchEngines: structuredClone(defaultSearchEngines),
   activeSearchEngineId: "google",
@@ -45,7 +54,14 @@ const defaultData = {
     backgroundOpacity: 1,
     backgroundBlur: 0,
     panelOpacity: 0.94,
-    panelBlur: 0
+    panelBlur: 0,
+    iconRadius: 8,
+    iconRadiusUnit: "px",
+    cardRadius: 0,
+    panelRadius: 0,
+    buttonRadius: 0,
+    fontScale: 1,
+    cardDensity: "comfortable"
   },
   appearancePresets: [],
   activeAppearancePresetId: "",
@@ -102,6 +118,7 @@ let categoryIconImageDraft = "";
 let needsDataMigration = false;
 let backgroundStorageOptimizationScheduled = false;
 let pendingImportedPresetId = "";
+let presetImportResultState = null;
 const CATEGORY_LONG_PRESS_MS = 500;
 const CATEGORY_DRAG_MOVE_PX = 7;
 const SHORTCUT_LONG_PRESS_MS = 500;
@@ -138,6 +155,9 @@ const shortcutDrag = {
 
 const els = {
   doc: document.documentElement,
+  topbar: document.querySelector("#topbar"),
+  brandKicker: document.querySelector("#brandKicker"),
+  brandTitle: document.querySelector("#brandTitle"),
   todayText: document.querySelector("#todayText"),
   shortcutTotal: document.querySelector("#shortcutTotal"),
   categoryTotal: document.querySelector("#categoryTotal"),
@@ -148,13 +168,17 @@ const els = {
   classicLanguageBtn: document.querySelector("#classicLanguageBtn"),
   classicHome: document.querySelector("#classicHome"),
   classicSearchForm: document.querySelector("#classicSearchForm"),
+  classicSearchInputLabel: document.querySelector("#classicSearchInputLabel"),
   classicSearchInput: document.querySelector("#classicSearchInput"),
   classicShortcutGrid: document.querySelector("#classicShortcutGrid"),
+  systemPanel: document.querySelector("#systemPanel"),
+  sidebar: document.querySelector("#sidebar"),
   signalLabel: document.querySelector("#signalLabel"),
   clustersStatLabel: document.querySelector("#clustersStatLabel"),
   clustersLabel: document.querySelector("#clustersLabel"),
   searchPrefix: document.querySelector("#searchPrefix"),
   searchForm: document.querySelector("#searchForm"),
+  searchInputLabel: document.querySelector("#searchInputLabel"),
   searchInput: document.querySelector("#searchInput"),
   searchEngineBtn: document.querySelector("#searchEngineBtn"),
   searchClearBtn: document.querySelector("#searchClearBtn"),
@@ -206,6 +230,8 @@ const els = {
   saveSearchEngineBtn: document.querySelector("#saveSearchEngineBtn"),
   customizeDialog: document.querySelector("#customizeDialog"),
   customizeDialogTitle: document.querySelector("#customizeDialogTitle"),
+  languageTitle: document.querySelector("#languageTitle"),
+  languageOptions: document.querySelector("#languageOptions"),
   appearanceTitle: document.querySelector("#appearanceTitle"),
   appearanceOptions: document.querySelector("#appearanceOptions"),
   themeColorTitle: document.querySelector("#themeColorTitle"),
@@ -226,6 +252,27 @@ const els = {
   keepCurrentAppearanceBtn: document.querySelector("#keepCurrentAppearanceBtn"),
   applyImportedPresetBtn: document.querySelector("#applyImportedPresetBtn"),
   dismissPresetImportResultBtn: document.querySelector("#dismissPresetImportResultBtn"),
+  sizeRadiusTitle: document.querySelector("#sizeRadiusTitle"),
+  iconRadiusLabel: document.querySelector("#iconRadiusLabel"),
+  iconRadiusInput: document.querySelector("#iconRadiusInput"),
+  iconRadiusValue: document.querySelector("#iconRadiusValue"),
+  iconRadiusQuickOptions: document.querySelector("#iconRadiusQuickOptions"),
+  cardRadiusLabel: document.querySelector("#cardRadiusLabel"),
+  cardRadiusInput: document.querySelector("#cardRadiusInput"),
+  cardRadiusValue: document.querySelector("#cardRadiusValue"),
+  panelRadiusLabel: document.querySelector("#panelRadiusLabel"),
+  panelRadiusInput: document.querySelector("#panelRadiusInput"),
+  panelRadiusValue: document.querySelector("#panelRadiusValue"),
+  buttonRadiusLabel: document.querySelector("#buttonRadiusLabel"),
+  buttonRadiusInput: document.querySelector("#buttonRadiusInput"),
+  buttonRadiusValue: document.querySelector("#buttonRadiusValue"),
+  fontScaleLabel: document.querySelector("#fontScaleLabel"),
+  fontScaleInput: document.querySelector("#fontScaleInput"),
+  fontScaleValue: document.querySelector("#fontScaleValue"),
+  cardDensityLabel: document.querySelector("#cardDensityLabel"),
+  cardDensityOptions: document.querySelector("#cardDensityOptions"),
+  shapePreviewCardLabel: document.querySelector("#shapePreviewCardLabel"),
+  shapePreviewButton: document.querySelector("#shapePreviewButton"),
   wallpaperTitle: document.querySelector("#wallpaperTitle"),
   backgroundGrid: document.querySelector("#backgroundGrid"),
   backgroundOpacityInput: document.querySelector("#backgroundOpacityInput"),
@@ -244,6 +291,14 @@ const els = {
   uploadBackgroundBtn: document.querySelector("#uploadBackgroundBtn"),
   removeBackgroundBtn: document.querySelector("#removeBackgroundBtn"),
   resetAppearanceBtn: document.querySelector("#resetAppearanceBtn"),
+  resetTitle: document.querySelector("#resetTitle"),
+  resetDescription: document.querySelector("#resetDescription"),
+  resetAppearanceDialog: document.querySelector("#resetAppearanceDialog"),
+  resetAppearanceDialogTitle: document.querySelector("#resetAppearanceDialogTitle"),
+  resetAppearanceMessage: document.querySelector("#resetAppearanceMessage"),
+  closeResetAppearanceDialogBtn: document.querySelector("#closeResetAppearanceDialogBtn"),
+  cancelResetAppearanceBtn: document.querySelector("#cancelResetAppearanceBtn"),
+  confirmResetAppearanceBtn: document.querySelector("#confirmResetAppearanceBtn"),
   shortcutDialog: document.querySelector("#shortcutDialog"),
   shortcutForm: document.querySelector("#shortcutForm"),
   shortcutDialogTitle: document.querySelector("#shortcutDialogTitle"),
@@ -262,13 +317,24 @@ const els = {
   saveShortcutBtn: document.querySelector("#saveShortcutBtn")
 };
 
-const messages = {
-  zh: {
+const translations = {
+  "zh-CN": {
     htmlLang: "zh-CN",
-    ready: "READY",
-    searchPrefix: "QUERY",
-    searchPlaceholder: "搜索 GOOGLE 或输入网址",
-    searchButton: "EXEC",
+    brandKicker: "RUNNER / 控制台",
+    brandTitle: "快捷中心",
+    ready: "就绪",
+    topbarLabel: "搜索和状态",
+    searchInputLabel: "搜索或输入网址",
+    systemPanelLabel: "快捷方式统计",
+    sidebarLabel: "分类",
+    classicShortcutsLabel: "Chrome 原版快捷方式",
+    closeDialog: "关闭",
+    addCategoryTitle: "添加分类",
+    languageToggle: "中文 / English",
+    searchPrefix: "搜索",
+    searchEngineGo: "前往",
+    searchPlaceholder: "搜索 Google 或输入网址",
+    searchButton: "打开",
     clearSearchInput: "清除输入",
     historyToggle: "历史",
     searchHistory: "搜索历史",
@@ -278,6 +344,7 @@ const messages = {
     clearHistory: "清空",
     noSearchHistory: "暂无搜索历史",
     noRelatedSearches: "输入关键词后显示相关搜索",
+    relatedSuffixes: "教程|官网|怎么用|下载|价格|替代工具|案例|最新",
     historyLabel: "历史",
     siteLabel: "站点",
     clusterLabel: "分类",
@@ -301,14 +368,34 @@ const messages = {
     invalidSearchEngine: "请输入名称，并填写包含 {query} 或 %s 的有效 http/https 搜索 URL。",
     deleteSearchEngineConfirm: "删除搜索引擎「{name}」吗？",
     urlLabel: "URL",
-    signal: "SIGNAL",
-    clusters: "CLUSTERS",
-    nativeHome: "CHROME 原版",
+    signal: "网站",
+    clusters: "分类",
+    nativeHome: "Chrome 原版",
     customize: "自定义",
     customizeTitle: "自定义",
-    appearanceTitle: "更换窗口外观",
-    themeColorTitle: "主题色",
+    languageTitle: "语言",
+    languageChinese: "简体中文",
+    languageEnglish: "English",
+    appearanceTitle: "外观模式",
+    themeColorTitle: "主题颜色",
     customThemeColor: "自定义颜色",
+    sizeRadiusTitle: "尺寸与圆角",
+    iconRadius: "图标圆角",
+    cardRadius: "网站卡片圆角",
+    panelRadius: "面板圆角",
+    buttonRadius: "按钮圆角",
+    fontScale: "字体大小",
+    cardDensity: "卡片密度",
+    densityCompact: "紧凑",
+    densityComfortable: "标准",
+    densitySpacious: "宽松",
+    radiusSquare: "直角",
+    radiusSubtle: "轻微",
+    radiusMedium: "中等",
+    radiusLarge: "大圆角",
+    radiusCircle: "圆形",
+    previewCard: "网站卡片",
+    previewButton: "按钮",
     appearancePresets: "外观预设",
     importPreset: "导入预设",
     savePreset: "保存为预设",
@@ -346,12 +433,17 @@ const messages = {
     customBackground: "自定义",
     uploadBackground: "上传背景（可多选）",
     removeBackground: "移除当前背景",
-    resetAppearance: "重置",
+    resetTitle: "恢复默认",
+    resetDescription: "只恢复语言和外观设置，不会删除网站、分类或排序。",
+    resetAppearance: "恢复默认设置",
+    resetAppearanceDialogTitle: "恢复默认设置",
+    resetAppearanceConfirm: "确定要恢复默认外观设置吗？此操作不会删除网站和分类数据。",
+    confirmReset: "确认恢复",
     invalidBackground: "请选择有效的背景图片。",
-    runnerHome: "RUNNER HUB",
-    classicSearchPlaceholder: "Ask Google",
-    aiMode: "AI Mode",
-    panelEyebrow: "SURFACE DATA // ACTIVE PANEL",
+    runnerHome: "Runner 主页",
+    classicSearchPlaceholder: "搜索 Google 或输入网址",
+    aiMode: "AI 模式",
+    panelEyebrow: "当前分类",
     editCluster: "编辑分类",
     addNode: "添加网站",
     emptyState: "这个分类还没有快捷方式。",
@@ -365,6 +457,8 @@ const messages = {
     uploadIcon: "上传",
     removeIcon: "移除",
     invalidImage: "请选择有效的图片文件。",
+    categoryDragHint: "右键编辑，长按 0.5 秒拖动排序",
+    shortcutDragHint: "长按 0.5 秒拖动排序",
     moveUp: "上移",
     moveDown: "下移",
     delete: "删除",
@@ -389,51 +483,83 @@ const messages = {
   },
   en: {
     htmlLang: "en",
+    brandKicker: "RUNNER / CONSOLE",
+    brandTitle: "SHORTCUT HUB",
     ready: "READY",
-    searchPrefix: "QUERY",
-    searchPlaceholder: "SEARCH GOOGLE OR ENTER URL",
-    searchButton: "EXEC",
-    clearSearchInput: "CLEAR INPUT",
-    historyToggle: "HIST",
-    searchHistory: "SEARCH HISTORY",
-    relatedSearches: "RELATED SEARCHES",
-    hideHistory: "HIDE",
-    showHistory: "SHOW HISTORY",
-    clearHistory: "CLEAR",
-    noSearchHistory: "NO SEARCH HISTORY",
-    noRelatedSearches: "TYPE TO SEE RELATED SEARCHES",
-    historyLabel: "HISTORY",
-    siteLabel: "SITE",
-    clusterLabel: "CLUSTER",
+    topbarLabel: "Search and status",
+    searchInputLabel: "Search or enter a URL",
+    systemPanelLabel: "Shortcut statistics",
+    sidebarLabel: "Categories",
+    classicShortcutsLabel: "Chrome original shortcuts",
+    closeDialog: "Close",
+    addCategoryTitle: "Add category",
+    languageToggle: "中文 / English",
+    searchPrefix: "SEARCH",
+    searchEngineGo: "GO",
+    searchPlaceholder: "Search Google or enter a URL",
+    searchButton: "OPEN",
+    clearSearchInput: "Clear input",
+    historyToggle: "History",
+    searchHistory: "Search History",
+    relatedSearches: "Related Searches",
+    hideHistory: "Hide",
+    showHistory: "Show History",
+    clearHistory: "Clear",
+    noSearchHistory: "No search history",
+    noRelatedSearches: "Type to see related searches",
+    relatedSuffixes: "official|tutorial|pricing|alternatives|download|examples|guide|latest",
+    historyLabel: "History",
+    siteLabel: "Site",
+    clusterLabel: "Category",
     googleLabel: "GOOGLE",
-    searchEngine: "SEARCH ENGINE",
-    switchSearchEngine: "SWITCH SEARCH ENGINE",
-    searchEngineDialogTitle: "SEARCH ENGINE",
-    addSearchEngine: "ADD CUSTOM SEARCH ENGINE",
-    editSearchEngine: "EDIT SEARCH ENGINE",
-    newSearchEngine: "NEW",
-    searchEngineName: "NAME",
-    searchEngineShortcut: "SHORT CODE",
-    searchEngineUrl: "SEARCH URL TEMPLATE",
+    searchEngine: "Search Engine",
+    switchSearchEngine: "Switch search engine",
+    searchEngineDialogTitle: "Search Engine",
+    addSearchEngine: "Add Custom Search Engine",
+    editSearchEngine: "Edit Search Engine",
+    newSearchEngine: "New",
+    searchEngineName: "Name",
+    searchEngineShortcut: "Short Code",
+    searchEngineUrl: "Search URL Template",
     searchEngineUrlPlaceholder: "https://example.com/search?q={query}",
     searchEngineTemplateHelp: "Use {query} as the query placeholder. %s is also supported.",
-    setSearchEngine: "USE",
-    activeSearchEngine: "ACTIVE",
-    builtinSearchEngine: "BUILT-IN",
-    customSearchEngine: "CUSTOM",
-    edit: "EDIT",
+    setSearchEngine: "Use",
+    activeSearchEngine: "Current",
+    builtinSearchEngine: "Built-in",
+    customSearchEngine: "Custom",
+    edit: "Edit",
     invalidSearchEngine: "Enter a name and a valid http/https search URL with {query} or %s.",
     deleteSearchEngineConfirm: "Delete search engine \"{name}\"?",
     urlLabel: "URL",
-    signal: "SIGNAL",
-    clusters: "CLUSTERS",
-    nativeHome: "CHROME NTP",
-    customize: "CUSTOMIZE",
-    customizeTitle: "CUSTOMIZE",
-    appearanceTitle: "APPEARANCE",
-    themeColorTitle: "THEME COLOR",
-    customThemeColor: "CUSTOM COLOR",
-    appearancePresets: "APPEARANCE PRESETS",
+    signal: "WEBSITES",
+    clusters: "CATEGORIES",
+    nativeHome: "Chrome Original",
+    customize: "Customize",
+    customizeTitle: "Customize",
+    languageTitle: "Language",
+    languageChinese: "简体中文",
+    languageEnglish: "English",
+    appearanceTitle: "Appearance Mode",
+    themeColorTitle: "Theme Color",
+    customThemeColor: "Custom Color",
+    sizeRadiusTitle: "Size and Corner Radius",
+    iconRadius: "Icon Corner Radius",
+    cardRadius: "Website Card Radius",
+    panelRadius: "Panel Radius",
+    buttonRadius: "Button Radius",
+    fontScale: "Font Size",
+    cardDensity: "Card Density",
+    densityCompact: "Compact",
+    densityComfortable: "Comfortable",
+    densitySpacious: "Spacious",
+    radiusSquare: "Square",
+    radiusSubtle: "Subtle",
+    radiusMedium: "Medium",
+    radiusLarge: "Large",
+    radiusCircle: "Circle",
+    previewCard: "Website Card",
+    previewButton: "Button",
+    appearancePresets: "Appearance Presets",
     importPreset: "IMPORT PRESET",
     savePreset: "SAVE PRESET",
     updatePreset: "UPDATE CURRENT",
@@ -470,58 +596,65 @@ const messages = {
     customBackground: "CUSTOM",
     uploadBackground: "UPLOAD BGS",
     removeBackground: "REMOVE SELECTED",
-    resetAppearance: "RESET",
+    resetTitle: "Reset to Default",
+    resetDescription: "Reset language and appearance only. Websites, categories, and ordering are preserved.",
+    resetAppearance: "Reset to Default",
+    resetAppearanceDialogTitle: "Reset to Default",
+    resetAppearanceConfirm: "Reset all appearance settings to default? Your websites and categories will not be deleted.",
+    confirmReset: "Reset",
     invalidBackground: "Choose a valid background image.",
-    runnerHome: "RUNNER HUB",
-    classicSearchPlaceholder: "Ask Google",
+    runnerHome: "Runner Home",
+    classicSearchPlaceholder: "Search Google or enter a URL",
     aiMode: "AI Mode",
-    panelEyebrow: "SURFACE DATA // ACTIVE PANEL",
-    editCluster: "EDIT CLUSTER",
-    addNode: "ADD NODE",
-    emptyState: "NO SHORTCUTS IN THIS CLUSTER.",
-    addCategory: "ADD CLUSTER",
-    editCategory: "EDIT CLUSTER",
-    categoryName: "CLUSTER NAME",
-    categoryIcon: "CLUSTER ICON",
+    panelEyebrow: "Current Category",
+    editCluster: "Edit Categories",
+    addNode: "Add Website",
+    emptyState: "No shortcuts in this category.",
+    addCategory: "Add Category",
+    editCategory: "Edit Category",
+    categoryName: "Category Name",
+    categoryIcon: "Category Icon",
     categoryIconPlaceholder: "AI / W / +",
-    categoryIconImage: "IMAGE ICON",
-    categoryIconImageCopy: "Upload a local image as this cluster icon.",
-    uploadIcon: "UPLOAD",
-    removeIcon: "REMOVE",
+    categoryIconImage: "Image Icon",
+    categoryIconImageCopy: "Upload a local image as this category icon.",
+    uploadIcon: "Upload",
+    removeIcon: "Remove",
     invalidImage: "Choose a valid image file.",
-    moveUp: "MOVE UP",
-    moveDown: "MOVE DOWN",
-    delete: "DELETE",
-    cancel: "CANCEL",
-    save: "SAVE",
-    addShortcut: "ADD NODE",
-    editShortcut: "EDIT NODE",
-    shortcutTitle: "NAME (OPTIONAL)",
+    categoryDragHint: "Right-click to edit. Hold for 0.5 seconds to reorder.",
+    shortcutDragHint: "Hold for 0.5 seconds to reorder.",
+    moveUp: "Move Up",
+    moveDown: "Move Down",
+    delete: "Delete",
+    cancel: "Cancel",
+    save: "Save",
+    addShortcut: "Add Website",
+    editShortcut: "Edit Website",
+    shortcutTitle: "Name (Optional)",
     shortcutUrl: "URL",
-    shortcutCategory: "CLUSTER",
-    autoIcon: "AUTO ICON",
+    shortcutCategory: "Category",
+    autoIcon: "Automatic Icon",
     autoIconCopy: "The site icon is matched automatically from its URL.",
-    refresh: "REFRESH",
-    backupColor: "BACKUP COLOR",
-    categoryNameRequired: "Enter a cluster name.",
-    duplicateCategory: "This cluster name already exists.",
+    refresh: "Refresh",
+    backupColor: "Backup Color",
+    categoryNameRequired: "Enter a category name.",
+    duplicateCategory: "This category name already exists.",
     autoShortcutTitle: "Site",
     invalidUrl: "Enter a valid URL.",
-    chooseCategory: "Choose a cluster.",
+    chooseCategory: "Choose a category.",
     deleteShortcutConfirm: "Delete \"{title}\"?",
-    deleteCategoryConfirm: "Delete \"{category}\"? Its nodes will move to \"{target}\"."
+    deleteCategoryConfirm: "Delete \"{category}\"? Its websites will move to \"{target}\"."
   }
 };
 
 const categoryTranslations = {
-  "ai-tools": { zh: "AI 工具", en: "AI TOOLS" },
-  social: { zh: "社媒平台", en: "SOCIAL" },
-  common: { zh: "常用", en: "COMMON" },
-  video: { zh: "视频创作", en: "VIDEO" },
-  assets: { zh: "素材灵感", en: "ASSETS" },
-  work: { zh: "工作后台", en: "WORK" },
-  projects: { zh: "项目常用", en: "PROJECTS" },
-  custom: { zh: "自定义", en: "CUSTOM" }
+  "ai-tools": { "zh-CN": "AI 工具", en: "AI Tools" },
+  social: { "zh-CN": "社媒平台", en: "Social" },
+  common: { "zh-CN": "常用", en: "Common" },
+  video: { "zh-CN": "视频创作", en: "Video" },
+  assets: { "zh-CN": "素材灵感", en: "Assets" },
+  work: { "zh-CN": "工作后台", en: "Work" },
+  projects: { "zh-CN": "项目常用", en: "Projects" },
+  custom: { "zh-CN": "自定义", en: "Custom" }
 };
 
 const defaultCategoryIcons = {
@@ -533,6 +666,17 @@ const defaultCategoryIcons = {
   work: "工",
   projects: "项",
   custom: "+"
+};
+
+const categoryIconTranslations = {
+  "ai-tools": { "zh-CN": "AI", en: "AI" },
+  social: { "zh-CN": "社", en: "SO" },
+  common: { "zh-CN": "+", en: "+" },
+  video: { "zh-CN": "影", en: "VI" },
+  assets: { "zh-CN": "灵", en: "AS" },
+  work: { "zh-CN": "工", en: "WO" },
+  projects: { "zh-CN": "项", en: "PR" },
+  custom: { "zh-CN": "+", en: "+" }
 };
 
 const commonSoftwareShortcuts = [
@@ -554,6 +698,25 @@ const appearanceModes = [
   { id: "system", labelKey: "themeSystem" }
 ];
 
+const localeOptions = [
+  { id: "zh-CN", labelKey: "languageChinese" },
+  { id: "en", labelKey: "languageEnglish" }
+];
+
+const iconRadiusQuickOptions = [
+  { value: 0, unit: "px", labelKey: "radiusSquare" },
+  { value: 4, unit: "px", labelKey: "radiusSubtle" },
+  { value: 8, unit: "px", labelKey: "radiusMedium" },
+  { value: 14, unit: "px", labelKey: "radiusLarge" },
+  { value: 50, unit: "percent", labelKey: "radiusCircle" }
+];
+
+const cardDensityOptions = [
+  { id: "compact", labelKey: "densityCompact" },
+  { id: "comfortable", labelKey: "densityComfortable" },
+  { id: "spacious", labelKey: "densitySpacious" }
+];
+
 const themeColorPresets = [
   "#d8ff3d",
   "#3478d4",
@@ -568,57 +731,63 @@ const themeColorPresets = [
 const backgroundPresets = [
   {
     id: "runner-grid",
-    label: { zh: "Runner", en: "Runner" },
+    label: { "zh-CN": "Runner", en: "Runner" },
     preview: "linear-gradient(90deg, rgba(216,255,61,.28) 0 1px, transparent 1px 22px), linear-gradient(135deg, #050604, #11180c 52%, #020303)"
   },
   {
     id: "stone",
-    label: { zh: "岩壁", en: "Stone" },
+    label: { "zh-CN": "岩壁", en: "Stone" },
     preview: "linear-gradient(165deg, #1a1c20 0 52%, #4a392e 53% 70%, #141516 71%)"
   },
   {
     id: "night",
-    label: { zh: "深空", en: "Night" },
+    label: { "zh-CN": "深空", en: "Night" },
     preview: "radial-gradient(circle at 75% 26%, rgba(72,111,255,.42), transparent 32%), linear-gradient(135deg, #141522, #060713)"
   },
   {
     id: "aurora",
-    label: { zh: "极光", en: "Aurora" },
+    label: { "zh-CN": "极光", en: "Aurora" },
     preview: "radial-gradient(circle at 20% 90%, rgba(108,240,255,.34), transparent 36%), radial-gradient(circle at 80% 18%, rgba(216,255,61,.28), transparent 34%), linear-gradient(135deg, #061211, #071c2b)"
   },
   {
     id: "ember",
-    label: { zh: "余烬", en: "Ember" },
+    label: { "zh-CN": "余烬", en: "Ember" },
     preview: "radial-gradient(circle at 72% 76%, rgba(255,121,52,.42), transparent 34%), linear-gradient(135deg, #170807, #2a180b 52%, #060303)"
   },
   {
     id: "ocean",
-    label: { zh: "海面", en: "Ocean" },
+    label: { "zh-CN": "海面", en: "Ocean" },
     preview: "radial-gradient(circle at 72% 18%, rgba(108,240,255,.32), transparent 28%), linear-gradient(135deg, #02131b, #083958 54%, #04101a)"
   },
   {
     id: "violet",
-    label: { zh: "紫影", en: "Violet" },
+    label: { "zh-CN": "紫影", en: "Violet" },
     preview: "radial-gradient(circle at 28% 76%, rgba(119,88,255,.38), transparent 32%), linear-gradient(135deg, #110d22, #030407)"
   },
   {
     id: "glass",
-    label: { zh: "玻璃", en: "Glass" },
+    label: { "zh-CN": "玻璃", en: "Glass" },
     preview: "linear-gradient(135deg, rgba(108,240,255,.24), transparent 32%), linear-gradient(45deg, #111827, #16313a 48%, #2d1740)"
   },
   {
     id: "plain",
-    label: { zh: "纯色", en: "Plain" },
+    label: { "zh-CN": "纯色", en: "Plain" },
     preview: "linear-gradient(135deg, #080a08, #151811)"
   }
 ];
 
 function t(key, vars = {}) {
-  let text = messages[state.locale]?.[key] || messages.en[key] || key;
+  let text = translations[state.locale]?.[key] || translations.en[key] || key;
   Object.entries(vars).forEach(([name, value]) => {
     text = text.replace(`{${name}}`, value);
   });
   return text;
+}
+
+function normalizeLocale(value, fallback = "zh-CN") {
+  if (value === "en") return "en";
+  if (value === "zh" || value === "zh-CN" || value === "zhCN") return "zh-CN";
+  return fallback;
 }
 
 function clone(value) {
@@ -658,6 +827,57 @@ async function readData() {
   });
 }
 
+function readUiPreferences() {
+  try {
+    const raw = localStorage.getItem(UI_PREFERENCES_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!isPlainObject(parsed) || Number(parsed.version) !== UI_PREFERENCES_VERSION) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function createUiPreferences(data = state) {
+  const appearance = normalizeAppearance(data.appearance);
+  return {
+    version: UI_PREFERENCES_VERSION,
+    locale: normalizeLocale(data.locale),
+    activeAppearancePresetId: String(data.activeAppearancePresetId || ""),
+    appearance: compactUiAppearance(appearance)
+  };
+}
+
+function compactUiAppearance(appearance) {
+  return compactAppearanceSnapshot(appearance);
+}
+
+function writeUiPreferences(data = state) {
+  try {
+    localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(createUiPreferences(data)));
+  } catch {
+    // Chrome Storage remains authoritative when localStorage is unavailable.
+  }
+}
+
+function mergeUiPreferences(data, preferences) {
+  if (!isPlainObject(preferences)) return data;
+  const merged = clone(data);
+  const currentAppearance = normalizeAppearance(merged.appearance);
+  const preferenceAppearance = isPlainObject(preferences.appearance) ? preferences.appearance : {};
+  merged.locale = normalizeLocale(preferences.locale, merged.locale);
+  merged.appearance = normalizeAppearance({
+    ...currentAppearance,
+    ...sanitizeImportedAppearanceFields(preferenceAppearance),
+    customBackgroundImages: currentAppearance.customBackgroundImages
+  });
+  if (merged.appearancePresets.some((preset) => preset.id === preferences.activeAppearancePresetId)) {
+    merged.activeAppearancePresetId = preferences.activeAppearancePresetId;
+  }
+  return merged;
+}
+
 async function writeData() {
   await writeDataSnapshot(clone(state));
 }
@@ -667,6 +887,7 @@ async function writeDataSnapshot(data) {
 
   if (!hasChromeStorage()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    writeUiPreferences(snapshot);
     return;
   }
 
@@ -680,6 +901,7 @@ async function writeDataSnapshot(data) {
       resolve();
     });
   });
+  writeUiPreferences(snapshot);
 }
 
 async function boot() {
@@ -697,23 +919,26 @@ async function boot() {
     state = structuredClone(defaultData);
   }
 
+  state = mergeUiPreferences(state, readUiPreferences());
+
   if (needsDataMigration) {
     await writeData();
   }
 
   render();
+  writeUiPreferences(state);
   scheduleBackgroundStorageOptimization();
 }
 
 function normalizeState(data) {
-  const locale = data.locale === "en" ? "en" : "zh";
+  const locale = normalizeLocale(data.locale);
   const mode = data.mode === "classic" ? "classic" : "runner";
   const searchEngines = normalizeSearchEngines(data.searchEngines);
   const activeSearchEngineId = searchEngines.some((engine) => engine.id === data.activeSearchEngineId)
     ? data.activeSearchEngineId
     : "google";
   const appearance = normalizeAppearance(data.appearance);
-  const appearancePresets = normalizeAppearancePresets(data.appearancePresets, appearance.customBackgroundImages);
+  const appearancePresets = normalizeAppearancePresets(data.appearancePresets, appearance.customBackgroundImages, locale);
   const activeAppearancePresetId = appearancePresets.some((preset) => preset.id === data.activeAppearancePresetId)
     ? data.activeAppearancePresetId
     : "";
@@ -869,6 +1094,17 @@ function normalizeAppearance(appearance = {}) {
   const backgroundBlur = Math.round(clampNumber(appearance.backgroundBlur, 0, 28, defaultData.appearance.backgroundBlur));
   const panelOpacity = clampNumber(appearance.panelOpacity, 0.1, 1, defaultData.appearance.panelOpacity);
   const panelBlur = Math.round(clampNumber(appearance.panelBlur, 0, 36, defaultData.appearance.panelBlur));
+  const iconRadiusUnit = appearance.iconRadiusUnit === "percent" ? "percent" : "px";
+  const iconRadius = iconRadiusUnit === "percent"
+    ? 50
+    : Math.round(clampNumber(appearance.iconRadius, 0, 24, defaultData.appearance.iconRadius));
+  const cardRadius = Math.round(clampNumber(appearance.cardRadius, 0, 24, defaultData.appearance.cardRadius));
+  const panelRadius = Math.round(clampNumber(appearance.panelRadius, 0, 24, defaultData.appearance.panelRadius));
+  const buttonRadius = Math.round(clampNumber(appearance.buttonRadius, 0, 24, defaultData.appearance.buttonRadius));
+  const fontScale = Math.round(clampNumber(appearance.fontScale, 0.85, 1.2, defaultData.appearance.fontScale) * 100) / 100;
+  const cardDensity = ["compact", "comfortable", "spacious"].includes(appearance.cardDensity)
+    ? appearance.cardDensity
+    : defaultData.appearance.cardDensity;
   return {
     theme,
     background: background === "custom" && !activeCustomBackgroundId ? "runner-grid" : background,
@@ -878,20 +1114,27 @@ function normalizeAppearance(appearance = {}) {
     backgroundOpacity,
     backgroundBlur,
     panelOpacity,
-    panelBlur
+    panelBlur,
+    iconRadius,
+    iconRadiusUnit,
+    cardRadius,
+    panelRadius,
+    buttonRadius,
+    fontScale,
+    cardDensity
   };
 }
 
-function normalizeAppearancePresets(presets = [], customBackgroundImages = []) {
+function normalizeAppearancePresets(presets = [], customBackgroundImages = [], locale = state.locale) {
   const normalized = [];
   (Array.isArray(presets) ? presets : []).forEach((preset, index) => {
-    const item = normalizeAppearancePreset(preset, index, normalized, customBackgroundImages);
+    const item = normalizeAppearancePreset(preset, index, normalized, customBackgroundImages, locale);
     if (item) normalized.push(item);
   });
   return normalized;
 }
 
-function normalizeAppearancePreset(preset, index, existingPresets = [], customBackgroundImages = []) {
+function normalizeAppearancePreset(preset, index, existingPresets = [], customBackgroundImages = [], locale = state.locale) {
   if (!preset || typeof preset !== "object") return null;
   const appearance = normalizeAppearance({
     ...preset.appearance,
@@ -901,6 +1144,7 @@ function normalizeAppearancePreset(preset, index, existingPresets = [], customBa
     id: uniqueAppearancePresetId(preset.id || createId(preset.name || `preset-${index + 1}`), existingPresets),
     name: normalizeAppearancePresetName(preset.name, index),
     appearance: compactAppearanceSnapshot(appearance),
+    locale: normalizeLocale(preset.locale || preset.appearance?.locale, normalizeLocale(locale)),
     createdAt: normalizeTimestamp(preset.createdAt),
     updatedAt: normalizeTimestamp(preset.updatedAt)
   };
@@ -941,7 +1185,14 @@ function compactAppearanceSnapshot(appearance) {
     backgroundOpacity: appearance.backgroundOpacity,
     backgroundBlur: appearance.backgroundBlur,
     panelOpacity: appearance.panelOpacity,
-    panelBlur: appearance.panelBlur
+    panelBlur: appearance.panelBlur,
+    iconRadius: appearance.iconRadius,
+    iconRadiusUnit: appearance.iconRadiusUnit,
+    cardRadius: appearance.cardRadius,
+    panelRadius: appearance.panelRadius,
+    buttonRadius: appearance.buttonRadius,
+    fontScale: appearance.fontScale,
+    cardDensity: appearance.cardDensity
   };
 }
 
@@ -1105,6 +1356,7 @@ function bindEvents() {
   els.cancelSearchEngineBtn.addEventListener("click", resetSearchEngineForm);
   els.deleteSearchEngineBtn.addEventListener("click", deleteEditingSearchEngine);
   els.customizeBtn.addEventListener("click", openCustomizeDialog);
+  els.languageOptions.addEventListener("click", onLanguageOptionClick);
   els.appearanceOptions.addEventListener("click", onAppearanceOptionClick);
   els.themeColorOptions.addEventListener("click", onThemeColorOptionClick);
   els.themeColorInput.addEventListener("input", onThemeColorInput);
@@ -1119,15 +1371,26 @@ function bindEvents() {
   els.closePresetImportResultBtn.addEventListener("click", closePresetImportResultDialog);
   els.presetImportResultDialog.addEventListener("close", () => {
     pendingImportedPresetId = "";
+    presetImportResultState = null;
   });
   els.backgroundGrid.addEventListener("click", onBackgroundOptionClick);
   els.backgroundOpacityInput.addEventListener("input", onBackgroundOpacityInput);
   els.backgroundBlurInput.addEventListener("input", onBackgroundBlurInput);
   els.panelOpacityInput.addEventListener("input", onPanelOpacityInput);
   els.panelBlurInput.addEventListener("input", onPanelBlurInput);
+  els.iconRadiusInput.addEventListener("input", onIconRadiusInput);
+  els.iconRadiusQuickOptions.addEventListener("click", onIconRadiusQuickOptionClick);
+  els.cardRadiusInput.addEventListener("input", onCardRadiusInput);
+  els.panelRadiusInput.addEventListener("input", onPanelRadiusInput);
+  els.buttonRadiusInput.addEventListener("input", onButtonRadiusInput);
+  els.fontScaleInput.addEventListener("input", onFontScaleInput);
+  els.cardDensityOptions.addEventListener("click", onCardDensityOptionClick);
   els.uploadBackgroundBtn.addEventListener("click", () => els.backgroundFileInput.click());
   els.removeBackgroundBtn.addEventListener("click", removeCustomBackground);
-  els.resetAppearanceBtn.addEventListener("click", resetAppearance);
+  els.resetAppearanceBtn.addEventListener("click", openResetAppearanceDialog);
+  els.closeResetAppearanceDialogBtn.addEventListener("click", closeResetAppearanceDialog);
+  els.cancelResetAppearanceBtn.addEventListener("click", closeResetAppearanceDialog);
+  els.confirmResetAppearanceBtn.addEventListener("click", resetAppearance);
   els.backgroundFileInput.addEventListener("change", onBackgroundFileChange);
   els.languageToggleBtn.addEventListener("click", toggleLocale);
   els.classicLanguageBtn.addEventListener("click", toggleLocale);
@@ -1247,8 +1510,18 @@ function render() {
 function applyI18n() {
   els.doc.lang = t("htmlLang");
   setDate();
-  els.languageToggleBtn.textContent = state.locale === "en" ? "中文" : "EN";
-  els.classicLanguageBtn.textContent = state.locale === "en" ? "中文" : "EN";
+  els.brandKicker.textContent = t("brandKicker");
+  els.brandTitle.textContent = t("brandTitle");
+  els.topbar.setAttribute("aria-label", t("topbarLabel"));
+  els.systemPanel.setAttribute("aria-label", t("systemPanelLabel"));
+  els.sidebar.setAttribute("aria-label", t("sidebarLabel"));
+  els.classicShortcutGrid.setAttribute("aria-label", t("classicShortcutsLabel"));
+  els.searchInputLabel.textContent = t("searchInputLabel");
+  els.classicSearchInputLabel.textContent = t("searchInputLabel");
+  els.languageToggleBtn.textContent = t("languageToggle");
+  els.languageToggleBtn.setAttribute("aria-label", t("languageTitle"));
+  els.classicLanguageBtn.textContent = t("languageToggle");
+  els.classicLanguageBtn.setAttribute("aria-label", t("languageTitle"));
   els.nativeHomeBtn.textContent = t("nativeHome");
   els.customizeBtn.textContent = t("customize");
   els.runnerHomeBtn.textContent = t("runnerHome");
@@ -1259,6 +1532,8 @@ function applyI18n() {
   els.searchClearBtn.title = t("clearSearchInput");
   els.searchClearBtn.setAttribute("aria-label", t("clearSearchInput"));
   els.searchSubmitBtn.textContent = t("searchButton");
+  els.searchSubmitBtn.title = t("searchButton");
+  els.searchSubmitBtn.setAttribute("aria-label", t("searchButton"));
   els.historyToggleBtn.textContent = t("historyToggle");
   els.historyToggleBtn.title = state.showSearchHistory ? t("hideHistory") : t("showHistory");
   els.historyToggleBtn.setAttribute("aria-label", state.showSearchHistory ? t("hideHistory") : t("showHistory"));
@@ -1272,6 +1547,8 @@ function applyI18n() {
   els.signalLabel.textContent = t("signal");
   els.clustersStatLabel.textContent = t("clusters");
   els.clustersLabel.textContent = t("clusters");
+  els.addCategoryBtn.title = t("addCategoryTitle");
+  els.addCategoryBtn.setAttribute("aria-label", t("addCategoryTitle"));
   els.panelEyebrow.textContent = t("panelEyebrow");
   els.editCategoryBtn.textContent = t("editCluster");
   els.addShortcutBtn.textContent = t("addNode");
@@ -1281,6 +1558,9 @@ function applyI18n() {
   els.deleteCategoryBtn.textContent = t("delete");
   els.cancelCategoryBtn.textContent = t("cancel");
   els.saveCategoryBtn.textContent = t("save");
+  if (els.categoryDialog.open) {
+    els.categoryDialogTitle.textContent = els.categoryId.value ? t("editCategory") : t("addCategory");
+  }
   els.previewTitle.textContent = t("autoIcon");
   els.previewCopy.textContent = t("autoIconCopy");
   els.refreshIconBtn.textContent = t("refresh");
@@ -1301,13 +1581,24 @@ function applyI18n() {
   els.deleteSearchEngineBtn.textContent = t("delete");
   els.cancelSearchEngineBtn.textContent = t("cancel");
   els.saveSearchEngineBtn.textContent = t("save");
+  els.searchEngineFormTitle.textContent = els.searchEngineId.value ? t("editSearchEngine") : t("addSearchEngine");
   setLabelText(els.searchEngineNameInput, t("searchEngineName"));
   setLabelText(els.searchEngineShortcutInput, t("searchEngineShortcut"));
   setLabelText(els.searchEngineUrlInput, t("searchEngineUrl"));
   els.customizeDialogTitle.textContent = t("customizeTitle");
+  els.languageTitle.textContent = t("languageTitle");
   els.appearanceTitle.textContent = t("appearanceTitle");
   els.themeColorTitle.textContent = t("themeColorTitle");
   els.customThemeColorLabel.textContent = t("customThemeColor");
+  els.sizeRadiusTitle.textContent = t("sizeRadiusTitle");
+  els.iconRadiusLabel.textContent = t("iconRadius");
+  els.cardRadiusLabel.textContent = t("cardRadius");
+  els.panelRadiusLabel.textContent = t("panelRadius");
+  els.buttonRadiusLabel.textContent = t("buttonRadius");
+  els.fontScaleLabel.textContent = t("fontScale");
+  els.cardDensityLabel.textContent = t("cardDensity");
+  els.shapePreviewCardLabel.textContent = t("previewCard");
+  els.shapePreviewButton.textContent = t("previewButton");
   els.appearancePresetTitle.textContent = t("appearancePresets");
   els.importAppearancePresetBtn.textContent = t("importPreset");
   els.saveAppearancePresetBtn.textContent = t("savePreset");
@@ -1323,11 +1614,29 @@ function applyI18n() {
   els.panelBlurLabel.textContent = t("panelBlur");
   els.uploadBackgroundBtn.textContent = t("uploadBackground");
   els.removeBackgroundBtn.textContent = t("removeBackground");
+  els.resetTitle.textContent = t("resetTitle");
+  els.resetDescription.textContent = t("resetDescription");
   els.resetAppearanceBtn.textContent = t("resetAppearance");
+  els.resetAppearanceDialogTitle.textContent = t("resetAppearanceDialogTitle");
+  els.resetAppearanceMessage.textContent = t("resetAppearanceConfirm");
+  els.cancelResetAppearanceBtn.textContent = t("cancel");
+  els.confirmResetAppearanceBtn.textContent = t("confirmReset");
+  els.closeResetAppearanceDialogBtn.title = t("closeDialog");
+  els.closeResetAppearanceDialogBtn.setAttribute("aria-label", t("closeDialog"));
   setLabelText(els.shortcutTitleInput, t("shortcutTitle"));
   setLabelText(els.shortcutUrlInput, t("shortcutUrl"));
   setLabelText(els.shortcutCategorySelect, t("shortcutCategory"));
   setLabelText(els.shortcutColorInput, t("backupColor"));
+  if (els.shortcutDialog.open) {
+    els.shortcutDialogTitle.textContent = els.shortcutId.value ? t("editShortcut") : t("addShortcut");
+  }
+  document.querySelectorAll(".close-dialog").forEach((button) => {
+    button.title = t("closeDialog");
+    button.setAttribute("aria-label", t("closeDialog"));
+  });
+  els.closePresetImportResultBtn.title = t("closeDialog");
+  els.closePresetImportResultBtn.setAttribute("aria-label", t("closeDialog"));
+  if (els.presetImportResultDialog.open) renderPresetImportResult();
 }
 
 function setLabelText(control, text) {
@@ -1345,6 +1654,7 @@ function applyAppearance() {
   const activeCustomBackground = getActiveCustomBackground(appearance);
   document.body.dataset.theme = resolvedTheme;
   document.body.dataset.background = appearance.background;
+  document.body.dataset.cardDensity = appearance.cardDensity;
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
   document.body.style.setProperty("--accent", appearance.accentColor);
   document.body.style.setProperty("--line-hot", appearance.accentColor);
@@ -1352,6 +1662,11 @@ function applyAppearance() {
   document.body.style.setProperty("--line", `rgba(${accentRgb.join(", ")}, 0.25)`);
   document.body.style.setProperty("--custom-background-opacity", String(appearance.backgroundOpacity));
   document.body.style.setProperty("--custom-background-blur", `${appearance.backgroundBlur}px`);
+  document.body.style.setProperty("--icon-radius", appearance.iconRadiusUnit === "percent" ? "50%" : `${appearance.iconRadius}px`);
+  document.body.style.setProperty("--card-radius", `${appearance.cardRadius}px`);
+  document.body.style.setProperty("--panel-radius", `${appearance.panelRadius}px`);
+  document.body.style.setProperty("--button-radius", `${appearance.buttonRadius}px`);
+  document.body.style.setProperty("--font-scale", String(appearance.fontScale));
   applyPanelVariables(appearance, resolvedTheme);
 
   if (activeCustomBackground) {
@@ -1400,12 +1715,73 @@ function openCustomizeDialog() {
 }
 
 function renderCustomizerControls() {
+  renderLanguageOptions();
   renderAppearanceOptions();
   renderThemeColorOptions();
+  renderShapeControls();
   renderAppearancePresetControls();
   renderBackgroundOptions();
   renderBackgroundTuningControls();
   els.removeBackgroundBtn.hidden = !(state.appearance.background === "custom" && getActiveCustomBackground());
+}
+
+function renderLanguageOptions() {
+  els.languageOptions.replaceChildren(
+    ...localeOptions.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "segmented-option";
+      button.dataset.locale = option.id;
+      button.textContent = t(option.labelKey);
+      button.setAttribute("aria-pressed", String(state.locale === option.id));
+      return button;
+    })
+  );
+}
+
+function renderShapeControls() {
+  const appearance = normalizeAppearance(state.appearance);
+  state.appearance = appearance;
+  els.iconRadiusInput.value = appearance.iconRadiusUnit === "percent" ? "25" : String(appearance.iconRadius);
+  els.iconRadiusValue.textContent = formatIconRadius(appearance);
+  els.cardRadiusInput.value = String(appearance.cardRadius);
+  els.cardRadiusValue.textContent = `${appearance.cardRadius}px`;
+  els.panelRadiusInput.value = String(appearance.panelRadius);
+  els.panelRadiusValue.textContent = `${appearance.panelRadius}px`;
+  els.buttonRadiusInput.value = String(appearance.buttonRadius);
+  els.buttonRadiusValue.textContent = `${appearance.buttonRadius}px`;
+  els.fontScaleInput.value = String(Math.round(appearance.fontScale * 100));
+  els.fontScaleValue.textContent = `${Math.round(appearance.fontScale * 100)}%`;
+
+  els.iconRadiusQuickOptions.replaceChildren(
+    ...iconRadiusQuickOptions.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "quick-option";
+      button.dataset.radiusValue = String(option.value);
+      button.dataset.radiusUnit = option.unit;
+      button.textContent = t(option.labelKey);
+      const isActive = appearance.iconRadius === option.value && appearance.iconRadiusUnit === option.unit;
+      button.setAttribute("aria-pressed", String(isActive));
+      return button;
+    })
+  );
+
+  els.cardDensityOptions.replaceChildren(
+    ...cardDensityOptions.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "segmented-option";
+      button.dataset.cardDensity = option.id;
+      button.textContent = t(option.labelKey);
+      button.setAttribute("aria-pressed", String(appearance.cardDensity === option.id));
+      return button;
+    })
+  );
+}
+
+function formatIconRadius(appearance = state.appearance) {
+  return appearance.iconRadiusUnit === "percent" ? "50%" : `${appearance.iconRadius}px`;
 }
 
 function renderAppearanceOptions() {
@@ -1417,7 +1793,7 @@ function renderAppearanceOptions() {
       button.dataset.theme = mode.id;
       button.setAttribute("aria-current", String(state.appearance.theme === mode.id));
       button.innerHTML = `
-        <span class="appearance-preview ${mode.id}"></span>
+        <span class="appearance-preview ${mode.id}"><span class="appearance-preview-icon">R</span></span>
         <strong></strong>
       `;
       button.querySelector("strong").textContent = t(mode.labelKey);
@@ -1435,7 +1811,7 @@ function renderBackgroundOptions() {
       id: "custom",
       customBackgroundId: background.id,
       label: {
-        zh: `${t("customBackground")} ${index + 1}`,
+        "zh-CN": `${t("customBackground")} ${index + 1}`,
         en: `${t("customBackground")} ${index + 1}`
       },
       preview: `url(${JSON.stringify(background.image)})`
@@ -1483,7 +1859,7 @@ function renderThemeColorOptions() {
 
 function renderAppearancePresetControls() {
   const customBackgroundImages = normalizeAppearance(state.appearance).customBackgroundImages;
-  state.appearancePresets = normalizeAppearancePresets(state.appearancePresets, customBackgroundImages);
+  state.appearancePresets = normalizeAppearancePresets(state.appearancePresets, customBackgroundImages, state.locale);
   const hasActivePreset = state.appearancePresets.some((preset) => preset.id === state.activeAppearancePresetId);
   els.updateAppearancePresetBtn.disabled = !hasActivePreset;
 
@@ -1604,7 +1980,7 @@ function renderCategories() {
       button.type = "button";
       button.className = "category-button";
       button.dataset.categoryId = category.id;
-      button.title = state.locale === "en" ? "Right-click to edit, long-press to drag" : "右键编辑，长按拖动";
+      button.title = t("categoryDragHint");
       button.setAttribute("aria-current", String(category.id === state.activeCategoryId));
       button.innerHTML = `
         <span class="category-main">
@@ -1624,7 +2000,9 @@ function renderCategories() {
 function renderSearchEngineControls() {
   state.searchEngines = normalizeSearchEngines(state.searchEngines);
   const activeEngine = getActiveSearchEngine();
-  els.searchEngineBtn.textContent = activeEngine.shortcut || activeEngine.name;
+  els.searchEngineBtn.textContent = activeEngine.id === "google"
+    ? t("searchEngineGo")
+    : (activeEngine.shortcut || activeEngine.name);
   els.searchEngineBtn.dataset.engineId = activeEngine.id;
   renderSearchEngineList();
   if (!els.searchEngineId.value) resetSearchEngineForm(false);
@@ -1710,8 +2088,10 @@ function createSearchSuggestionButton(item) {
   button.type = "button";
   button.dataset.searchValue = item.value;
   button.dataset.searchKind = item.kind;
-  button.innerHTML = `<span></span><small></small>`;
-  button.querySelector("span").textContent = item.value;
+  button.innerHTML = `<span class="search-result-icon" aria-hidden="true"></span><span class="search-result-copy"></span><small></small>`;
+  const icons = { history: "↺", site: "◫", category: "#", related: "⌕" };
+  button.querySelector(".search-result-icon").textContent = icons[item.kind] || "⌕";
+  button.querySelector(".search-result-copy").textContent = item.value;
   button.querySelector("small").textContent = item.label;
   return button;
 }
@@ -1769,10 +2149,7 @@ function buildSearchSuggestions(query) {
 }
 
 function relatedKeywordSuffixes(query) {
-  const usesChinese = /[\u4e00-\u9fa5]/.test(query) || state.locale === "zh";
-  const suffixes = usesChinese
-    ? ["教程", "官网", "怎么用", "下载", "价格", "替代工具", "案例", "最新"]
-    : ["official", "tutorial", "pricing", "alternatives", "download", "examples", "guide", "latest"];
+  const suffixes = t("relatedSuffixes").split("|");
   return suffixes.map((suffix) => `${query} ${suffix}`);
 }
 
@@ -1790,14 +2167,19 @@ function renderShortcutSelect() {
 function displayCategoryName(category) {
   const translation = categoryTranslations[category.id];
   if (!translation) return category.name;
-  const defaultName = translation.zh;
+  const defaultName = translation["zh-CN"];
   const englishName = translation.en;
   if (category.name !== defaultName && category.name !== englishName) return category.name;
   return translation[state.locale] || category.name;
 }
 
 function categoryIcon(category) {
-  return normalizeCategoryIcon(category.icon) || defaultCategoryIcons[category.id] || initials(displayCategoryName(category));
+  const translatedIcons = categoryIconTranslations[category.id];
+  const normalizedIcon = normalizeCategoryIcon(category.icon);
+  if (translatedIcons && Object.values(translatedIcons).includes(normalizedIcon)) {
+    return translatedIcons[state.locale] || normalizedIcon;
+  }
+  return normalizedIcon || defaultCategoryIcons[category.id] || initials(displayCategoryName(category));
 }
 
 function paintCategoryIcon(container, category) {
@@ -1899,7 +2281,7 @@ function createShortcutCard(shortcut) {
 
   const icon = document.createElement("div");
   paintShortcutIcon(icon, shortcut);
-  icon.title = state.locale === "en" ? "Hold 0.5s to drag" : "长按 0.5 秒拖动排序";
+  icon.title = t("shortcutDragHint");
 
   const title = document.createElement("p");
   title.className = "shortcut-title";
@@ -1913,7 +2295,7 @@ function createShortcutCard(shortcut) {
   edit.type = "button";
   edit.className = "shortcut-edit";
   edit.dataset.editShortcut = shortcut.id;
-  edit.title = "编辑";
+  edit.title = t("edit");
   edit.textContent = "...";
 
   card.append(icon, title, url, edit);
@@ -2214,6 +2596,7 @@ function createMigratedPresetEnvelope(source, presets, activePresetId) {
   return {
     type: APPEARANCE_PRESET_IMPORT_TYPE,
     version: APPEARANCE_PRESET_IMPORT_VERSION,
+    locale: source.locale,
     activePresetId: String(activePresetId || ""),
     presets,
     backgrounds
@@ -2244,6 +2627,7 @@ function sanitizeImportedPreset(data) {
       sourceId: String(preset.id || "").slice(0, 120),
       name: String(preset.name).trim().slice(0, 40),
       appearance: sanitizeImportedAppearanceFields(preset.appearance),
+      locale: normalizeLocale(preset.locale || preset.appearance?.locale || data.locale, state.locale),
       createdAt: normalizeTimestamp(preset.createdAt),
       updatedAt: normalizeTimestamp(preset.updatedAt)
     })),
@@ -2318,6 +2702,7 @@ async function importPreset(importedData) {
       id,
       name,
       appearance: importedAppearance.appearance,
+      locale: preset.locale,
       createdAt: preset.createdAt || now,
       updatedAt: preset.updatedAt || now
     });
@@ -2358,6 +2743,13 @@ function buildImportedAppearance(rawAppearance, currentAppearance, customBackgro
     backgroundBlur: Math.round(clampNumber(rawAppearance.backgroundBlur, 0, 28, currentAppearance.backgroundBlur)),
     panelOpacity: clampNumber(rawAppearance.panelOpacity, 0.1, 1, currentAppearance.panelOpacity),
     panelBlur: Math.round(clampNumber(rawAppearance.panelBlur, 0, 36, currentAppearance.panelBlur)),
+    iconRadius: rawAppearance.iconRadius ?? currentAppearance.iconRadius,
+    iconRadiusUnit: rawAppearance.iconRadiusUnit || currentAppearance.iconRadiusUnit,
+    cardRadius: rawAppearance.cardRadius ?? currentAppearance.cardRadius,
+    panelRadius: rawAppearance.panelRadius ?? currentAppearance.panelRadius,
+    buttonRadius: rawAppearance.buttonRadius ?? currentAppearance.buttonRadius,
+    fontScale: rawAppearance.fontScale ?? currentAppearance.fontScale,
+    cardDensity: rawAppearance.cardDensity || currentAppearance.cardDensity,
     customBackgroundImages
   };
   let wallpaperMissing = false;
@@ -2423,25 +2815,35 @@ function uniqueImportedPresetName(name, presets) {
 
 function showPresetImportSuccess(result) {
   pendingImportedPresetId = result.applyPresetId;
-  els.presetImportResultTitle.textContent = t("importSuccessful");
-  els.presetImportResultMessage.textContent = t("importedPresetCount", { count: result.count });
-  els.presetImportResultWarning.textContent = result.wallpaperMissing ? t("customWallpaperMissing") : "";
-  els.presetImportResultWarning.hidden = !result.wallpaperMissing;
-  els.keepCurrentAppearanceBtn.hidden = false;
-  els.applyImportedPresetBtn.hidden = !pendingImportedPresetId;
-  els.dismissPresetImportResultBtn.hidden = true;
+  presetImportResultState = {
+    kind: "success",
+    count: result.count,
+    wallpaperMissing: Boolean(result.wallpaperMissing)
+  };
+  renderPresetImportResult();
   openPresetImportResultDialog();
 }
 
 function showPresetImportError(messageKey) {
   pendingImportedPresetId = "";
-  els.presetImportResultTitle.textContent = t("importFailed");
-  els.presetImportResultMessage.textContent = t(messageKey);
-  els.presetImportResultWarning.hidden = true;
-  els.keepCurrentAppearanceBtn.hidden = true;
-  els.applyImportedPresetBtn.hidden = true;
-  els.dismissPresetImportResultBtn.hidden = false;
+  presetImportResultState = { kind: "error", messageKey };
+  renderPresetImportResult();
   openPresetImportResultDialog();
+}
+
+function renderPresetImportResult() {
+  if (!presetImportResultState) return;
+  const isSuccess = presetImportResultState.kind === "success";
+  els.presetImportResultTitle.textContent = t(isSuccess ? "importSuccessful" : "importFailed");
+  els.presetImportResultMessage.textContent = isSuccess
+    ? t("importedPresetCount", { count: presetImportResultState.count })
+    : t(presetImportResultState.messageKey);
+  const wallpaperMissing = isSuccess && presetImportResultState.wallpaperMissing;
+  els.presetImportResultWarning.textContent = wallpaperMissing ? t("customWallpaperMissing") : "";
+  els.presetImportResultWarning.hidden = !wallpaperMissing;
+  els.keepCurrentAppearanceBtn.hidden = !isSuccess;
+  els.applyImportedPresetBtn.hidden = !isSuccess || !pendingImportedPresetId;
+  els.dismissPresetImportResultBtn.hidden = isSuccess;
 }
 
 function openPresetImportResultDialog() {
@@ -2450,6 +2852,7 @@ function openPresetImportResultDialog() {
 
 function closePresetImportResultDialog() {
   pendingImportedPresetId = "";
+  presetImportResultState = null;
   if (els.presetImportResultDialog.open) els.presetImportResultDialog.close();
 }
 
@@ -2482,7 +2885,8 @@ async function saveCurrentAppearancePreset() {
   const preset = createAppearancePreset(normalizeAppearancePresetName(nameInput, state.appearancePresets.length));
   state.appearancePresets = normalizeAppearancePresets(
     state.appearancePresets.concat(preset),
-    normalizeAppearance(state.appearance).customBackgroundImages
+    normalizeAppearance(state.appearance).customBackgroundImages,
+    state.locale
   );
   state.activeAppearancePresetId = preset.id;
   await writeData();
@@ -2495,6 +2899,7 @@ function createAppearancePreset(name) {
     id: uniqueAppearancePresetId(createId(name || "appearance-preset"), state.appearancePresets),
     name,
     appearance: snapshotCurrentAppearance(),
+    locale: state.locale,
     createdAt: now,
     updatedAt: now
   };
@@ -2508,10 +2913,12 @@ async function updateActiveAppearancePreset() {
   }
 
   preset.appearance = snapshotCurrentAppearance();
+  preset.locale = state.locale;
   preset.updatedAt = Date.now();
   state.appearancePresets = normalizeAppearancePresets(
     state.appearancePresets,
-    normalizeAppearance(state.appearance).customBackgroundImages
+    normalizeAppearance(state.appearance).customBackgroundImages,
+    state.locale
   );
   await writeData();
   renderCustomizerControls();
@@ -2548,6 +2955,7 @@ async function applyAppearancePreset(presetId) {
     ...preset.appearance,
     customBackgroundImages: currentAppearance.customBackgroundImages
   });
+  candidate.locale = normalizeLocale(preset.locale, candidate.locale);
   candidate.activeAppearancePresetId = preset.id;
   await writeDataSnapshot(candidate);
   state = candidate;
@@ -2582,6 +2990,20 @@ async function onAppearanceOptionClick(event) {
   const button = event.target.closest("[data-theme]");
   if (!button) return;
   state.appearance.theme = button.dataset.theme;
+  await writeData();
+  render();
+}
+
+async function onLanguageOptionClick(event) {
+  const button = event.target.closest("[data-locale]");
+  if (!button) return;
+  await setLocale(button.dataset.locale);
+}
+
+async function setLocale(locale) {
+  const normalized = normalizeLocale(locale, state.locale);
+  if (normalized === state.locale) return;
+  state.locale = normalized;
   await writeData();
   render();
 }
@@ -2648,6 +3070,61 @@ async function onPanelBlurInput(event) {
   await writeData();
 }
 
+async function onIconRadiusInput(event) {
+  const sliderValue = Math.round(clampNumber(event.target.value, 0, 25, defaultData.appearance.iconRadius));
+  if (sliderValue === 25) {
+    state.appearance.iconRadius = 50;
+    state.appearance.iconRadiusUnit = "percent";
+  } else {
+    state.appearance.iconRadius = sliderValue;
+    state.appearance.iconRadiusUnit = "px";
+  }
+  await previewAndPersistShapeSettings();
+}
+
+async function onIconRadiusQuickOptionClick(event) {
+  const button = event.target.closest("[data-radius-value]");
+  if (!button) return;
+  state.appearance.iconRadius = Number(button.dataset.radiusValue);
+  state.appearance.iconRadiusUnit = button.dataset.radiusUnit === "percent" ? "percent" : "px";
+  await previewAndPersistShapeSettings();
+}
+
+async function onCardRadiusInput(event) {
+  state.appearance.cardRadius = Math.round(clampNumber(event.target.value, 0, 24, defaultData.appearance.cardRadius));
+  await previewAndPersistShapeSettings();
+}
+
+async function onPanelRadiusInput(event) {
+  state.appearance.panelRadius = Math.round(clampNumber(event.target.value, 0, 24, defaultData.appearance.panelRadius));
+  await previewAndPersistShapeSettings();
+}
+
+async function onButtonRadiusInput(event) {
+  state.appearance.buttonRadius = Math.round(clampNumber(event.target.value, 0, 24, defaultData.appearance.buttonRadius));
+  await previewAndPersistShapeSettings();
+}
+
+async function onFontScaleInput(event) {
+  state.appearance.fontScale = clampNumber(Number(event.target.value) / 100, 0.85, 1.2, defaultData.appearance.fontScale);
+  await previewAndPersistShapeSettings();
+}
+
+async function onCardDensityOptionClick(event) {
+  const button = event.target.closest("[data-card-density]");
+  if (!button || !cardDensityOptions.some((option) => option.id === button.dataset.cardDensity)) return;
+  state.appearance.cardDensity = button.dataset.cardDensity;
+  await previewAndPersistShapeSettings(true);
+}
+
+async function previewAndPersistShapeSettings(renderCards = false) {
+  state.appearance = normalizeAppearance(state.appearance);
+  applyAppearance();
+  renderShapeControls();
+  if (renderCards) renderShortcuts();
+  await writeData();
+}
+
 async function onBackgroundFileChange(event) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
@@ -2699,9 +3176,26 @@ async function removeCustomBackground() {
   render();
 }
 
+function openResetAppearanceDialog() {
+  if (!els.resetAppearanceDialog.open) els.resetAppearanceDialog.showModal();
+}
+
+function closeResetAppearanceDialog() {
+  if (els.resetAppearanceDialog.open) els.resetAppearanceDialog.close();
+}
+
 async function resetAppearance() {
-  state.appearance = structuredClone(defaultData.appearance);
-  await writeData();
+  const candidate = clone(state);
+  const existingBackgrounds = normalizeAppearance(state.appearance).customBackgroundImages;
+  candidate.locale = "zh-CN";
+  candidate.appearance = {
+    ...structuredClone(defaultData.appearance),
+    customBackgroundImages: existingBackgrounds
+  };
+  candidate.activeAppearancePresetId = "";
+  await writeDataSnapshot(candidate);
+  state = candidate;
+  closeResetAppearanceDialog();
   render();
 }
 
@@ -2939,9 +3433,7 @@ async function recordCategoryUse(categoryId, shouldWrite = true) {
 }
 
 async function toggleLocale() {
-  state.locale = state.locale === "en" ? "zh" : "en";
-  await writeData();
-  render();
+  await setLocale(state.locale === "en" ? "zh-CN" : "en");
 }
 
 async function setMode(mode) {

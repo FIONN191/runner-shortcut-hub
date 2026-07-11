@@ -1,0 +1,29 @@
+{
+  "format": "runner-shortcut-hub-appearance-backup",
+  "formatVersion": 1,
+  "activePresetId": "preset-1",
+  "appearancePresets": [
+    {
+      "id": "preset-1",
+      "name": "Preset 1",
+      "locale": "en",
+      "appearance": {
+        "theme": "dark",
+        "accentColor": "#5f8fd8",
+        "background": "ocean",
+        "backgroundOpacity": 0.82,
+        "backgroundBlur": 6,
+        "panelOpacity": 0.72,
+        "panelBlur": 10,
+        "iconRadius": 14,
+        "iconRadiusUnit": "px",
+        "cardRadius": 8,
+        "panelRadius": 12,
+        "buttonRadius": 6,
+        "fontScale": 1.08,
+        "cardDensity": "compact"
+      }
+    }
+  ],
+  "customBackgroundImages": []
+}

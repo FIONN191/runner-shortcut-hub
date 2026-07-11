@@ -1,0 +1,265 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const { webcrypto } = require("node:crypto");
+
+const projectRoot = path.resolve(__dirname, "..");
+const extensionRoot = path.join(projectRoot, "outputs", "chrome-new-tab-dashboard-extension");
+const appPath = path.join(extensionRoot, "app.js");
+const htmlPath = path.join(extensionRoot, "newtab.html");
+const cssPath = path.join(extensionRoot, "styles.css");
+const appSource = fs.readFileSync(appPath, "utf8");
+
+const styleValues = new Map();
+const makeElement = () => ({
+  addEventListener() {},
+  setAttribute() {},
+  removeAttribute() {},
+  replaceChildren() {},
+  append() {},
+  querySelector: () => makeElement(),
+  querySelectorAll: () => [],
+  classList: { add() {}, remove() {}, toggle() {} },
+  style: {
+    setProperty(name, value) { styleValues.set(name, value); },
+    removeProperty(name) { styleValues.delete(name); }
+  },
+  dataset: {},
+  childNodes: [],
+  open: false,
+  hidden: false,
+  value: ""
+});
+
+const localStorageValues = new Map();
+const body = makeElement();
+const context = {
+  console,
+  structuredClone,
+  crypto: webcrypto,
+  atob,
+  btoa,
+  URL,
+  Blob,
+  File: globalThis.File,
+  setTimeout,
+  clearTimeout,
+  Intl,
+  Date,
+  Node: { TEXT_NODE: 3 },
+  document: {
+    documentElement: makeElement(),
+    body,
+    querySelector: () => makeElement(),
+    querySelectorAll: () => [],
+    createElement: () => makeElement()
+  },
+  window: {
+    matchMedia: () => ({ matches: false, addEventListener() {} })
+  },
+  localStorage: {
+    getItem: (key) => localStorageValues.get(key) || null,
+    setItem: (key, value) => localStorageValues.set(key, value)
+  }
+};
+context.globalThis = context;
+vm.createContext(context);
+
+const sourceWithoutBoot = appSource.replace(/\nboot\(\);\s*$/, "\n");
+vm.runInContext(`${sourceWithoutBoot}\n
+writeDataSnapshot = async (data) => { globalThis.__lastSnapshot = clone(data); };
+render = () => {};
+closeResetAppearanceDialog = () => {};
+globalThis.__uiTestApi = {
+  translations,
+  normalizeLocale,
+  normalizeAppearance,
+  compactAppearanceSnapshot,
+  createUiPreferences,
+  mergeUiPreferences,
+  applyAppearance,
+  createAppearancePreset,
+  categoryIcon,
+  resetAppearance,
+  getState: () => clone(state),
+  setState: (value) => { state = clone(value); },
+  getDefaultState: () => clone(defaultData),
+  translate: (locale, key) => {
+    state.locale = normalizeLocale(locale);
+    return t(key);
+  }
+};`, context, { filename: appPath });
+
+const api = context.__uiTestApi;
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function nonAppearanceSnapshot(state) {
+  return JSON.stringify({
+    mode: state.mode,
+    searchEngines: state.searchEngines,
+    activeSearchEngineId: state.activeSearchEngineId,
+    searchHistory: state.searchHistory,
+    showSearchHistory: state.showSearchHistory,
+    categories: state.categories,
+    shortcuts: state.shortcuts,
+    activeCategoryId: state.activeCategoryId
+  });
+}
+
+(async () => {
+  const defaults = api.getDefaultState();
+  assert.equal(defaults.locale, "zh-CN");
+  assert.equal(api.normalizeLocale("zh"), "zh-CN");
+  assert.equal(api.normalizeLocale("zhCN"), "zh-CN");
+  assert.equal(api.normalizeLocale("en"), "en");
+  assert.equal(api.translate("zh-CN", "customize"), "自定义");
+  assert.equal(api.translate("en", "customize"), "Customize");
+  api.translate("zh-CN", "customize");
+  assert.equal(api.categoryIcon({ id: "video", name: "视频创作", icon: "影" }), "影");
+  api.translate("en", "customize");
+  assert.equal(api.categoryIcon({ id: "video", name: "视频创作", icon: "影" }), "VI");
+  assert.equal(api.categoryIcon({ id: "video", name: "My Video", icon: "MV" }), "MV");
+
+  const zhKeys = Object.keys(api.translations["zh-CN"]).sort();
+  const enKeys = Object.keys(api.translations.en).sort();
+  assert.deepEqual(zhKeys, enKeys, "Chinese and English dictionaries must expose identical keys");
+  const staticTranslationKeys = Array.from(appSource.matchAll(/\bt\(\s*["']([^"']+)["']/g), (match) => match[1]);
+  staticTranslationKeys.forEach((key) => {
+    assert.ok(Object.hasOwn(api.translations["zh-CN"], key), `Missing zh-CN translation: ${key}`);
+    assert.ok(Object.hasOwn(api.translations.en, key), `Missing English translation: ${key}`);
+  });
+
+  const normalizedCircle = api.normalizeAppearance({
+    ...defaults.appearance,
+    iconRadius: 50,
+    iconRadiusUnit: "percent",
+    cardRadius: 99,
+    panelRadius: -4,
+    buttonRadius: 9,
+    fontScale: 1.08,
+    cardDensity: "compact"
+  });
+  assert.equal(normalizedCircle.iconRadius, 50);
+  assert.equal(normalizedCircle.iconRadiusUnit, "percent");
+  assert.equal(normalizedCircle.cardRadius, 24);
+  assert.equal(normalizedCircle.panelRadius, 0);
+  assert.equal(normalizedCircle.buttonRadius, 9);
+  assert.equal(normalizedCircle.fontScale, 1.08);
+  assert.equal(normalizedCircle.cardDensity, "compact");
+
+  const stateWithAppearance = api.getDefaultState();
+  stateWithAppearance.appearance = normalizedCircle;
+  api.setState(stateWithAppearance);
+  styleValues.clear();
+  api.applyAppearance();
+  assert.equal(styleValues.get("--icon-radius"), "50%");
+  assert.equal(styleValues.get("--card-radius"), "24px");
+  assert.equal(styleValues.get("--panel-radius"), "0px");
+  assert.equal(styleValues.get("--button-radius"), "9px");
+  assert.equal(styleValues.get("--font-scale"), "1.08");
+  assert.equal(body.dataset.cardDensity, "compact");
+
+  const preset = api.createAppearancePreset("Shape Preset");
+  assert.equal(preset.locale, "zh-CN");
+  assert.equal(preset.appearance.iconRadius, 50);
+  assert.equal(preset.appearance.iconRadiusUnit, "percent");
+  assert.equal(preset.appearance.cardRadius, 24);
+  assert.equal(preset.appearance.buttonRadius, 9);
+  assert.equal(preset.appearance.fontScale, 1.08);
+  assert.equal(preset.appearance.cardDensity, "compact");
+
+  const backgroundImage = { id: "bg-1", image: "data:image/png;base64,AA==", accentColor: "#335577" };
+  const stateForPreferences = api.getDefaultState();
+  stateForPreferences.locale = "en";
+  stateForPreferences.appearance = {
+    ...stateForPreferences.appearance,
+    theme: "light",
+    iconRadius: 14,
+    customBackgroundImages: [backgroundImage],
+    activeCustomBackgroundId: "bg-1",
+    background: "custom"
+  };
+  const preferences = api.createUiPreferences(stateForPreferences);
+  assert.equal(preferences.locale, "en");
+  assert.equal(preferences.appearance.iconRadius, 14);
+  assert.equal(Object.hasOwn(preferences.appearance, "customBackgroundImages"), false);
+  assert.doesNotMatch(JSON.stringify(preferences), /data:image/);
+
+  const storageState = api.getDefaultState();
+  storageState.appearance.customBackgroundImages = [backgroundImage];
+  const merged = api.mergeUiPreferences(storageState, preferences);
+  assert.equal(merged.locale, "en");
+  assert.equal(merged.appearance.theme, "light");
+  assert.equal(merged.appearance.iconRadius, 14);
+  assert.equal(merged.appearance.customBackgroundImages.length, 1);
+  assert.equal(merged.appearance.customBackgroundImages[0].id, backgroundImage.id);
+  assert.equal(merged.appearance.customBackgroundImages[0].image, backgroundImage.image);
+
+  const resetSeed = api.getDefaultState();
+  resetSeed.locale = "en";
+  resetSeed.mode = "classic";
+  resetSeed.appearance = {
+    ...resetSeed.appearance,
+    theme: "light",
+    accentColor: "#123456",
+    background: "custom",
+    customBackgroundImages: [backgroundImage],
+    activeCustomBackgroundId: "bg-1",
+    iconRadius: 50,
+    iconRadiusUnit: "percent",
+    cardRadius: 20,
+    panelRadius: 18,
+    buttonRadius: 12,
+    fontScale: 1.2,
+    cardDensity: "spacious"
+  };
+  resetSeed.activeAppearancePresetId = "saved-preset";
+  const beforeReset = nonAppearanceSnapshot(resetSeed);
+  api.setState(resetSeed);
+  await api.resetAppearance();
+  const resetState = api.getState();
+  assert.equal(nonAppearanceSnapshot(resetState), beforeReset);
+  assert.equal(resetState.locale, "zh-CN");
+  assert.equal(resetState.appearance.theme, "dark");
+  assert.equal(resetState.appearance.iconRadius, 8);
+  assert.equal(resetState.appearance.iconRadiusUnit, "px");
+  assert.equal(resetState.appearance.cardRadius, 0);
+  assert.equal(resetState.appearance.fontScale, 1);
+  assert.equal(resetState.appearance.cardDensity, "comfortable");
+  assert.equal(resetState.activeAppearancePresetId, "");
+  assert.equal(resetState.appearance.customBackgroundImages.length, 1);
+  assert.equal(resetState.appearance.customBackgroundImages[0].id, backgroundImage.id);
+  assert.equal(resetState.appearance.customBackgroundImages[0].image, backgroundImage.image);
+
+  const html = fs.readFileSync(htmlPath, "utf8");
+  const css = fs.readFileSync(cssPath, "utf8");
+  [
+    "RUNNER / OPS",
+    ">QUERY<",
+    ">EXEC<",
+    ">SIGNAL<",
+    ">CLUSTERS<",
+    "SURFACE DATA // ACTIVE PANEL",
+    ">Chrome Original<",
+    ">Customize<",
+    ">Edit Categories<",
+    ">Add Website<"
+  ].forEach((text) => assert.equal(html.includes(text), false, `Hard-coded functional copy remains: ${text}`));
+  assert.equal((html.match(/\bnovalidate\b/g) || []).length, 3);
+  assert.doesNotMatch(appSource, /\.title\s*=\s*["'](?:编辑|Edit|关闭|Close)["']/);
+  assert.match(css, /--icon-radius:\s*8px/);
+  assert.match(css, /\.category-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+  assert.match(css, /\.shortcut-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+  assert.match(css, /\.search-result-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+  assert.match(css, /\.shape-preview-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+  assert.match(css, /\.appearance-preview-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+
+  console.log("UI settings and i18n tests passed");
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

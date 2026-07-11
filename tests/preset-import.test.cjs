@@ -77,7 +77,6 @@ const api = context.__presetTestApi;
 
 function nonAppearanceSnapshot(state) {
   return JSON.stringify({
-    locale: state.locale,
     mode: state.mode,
     searchEngines: state.searchEngines,
     activeSearchEngineId: state.activeSearchEngineId,
@@ -140,6 +139,13 @@ async function expectImportError(file, messageKey) {
   assert.equal(current.appearance.accentColor, "#5f8fd8");
   assert.equal(current.appearance.theme, "dark");
   assert.equal(current.appearance.background, "ocean");
+  assert.equal(current.locale, "en");
+  assert.equal(current.appearance.iconRadius, 14);
+  assert.equal(current.appearance.cardRadius, 8);
+  assert.equal(current.appearance.panelRadius, 12);
+  assert.equal(current.appearance.buttonRadius, 6);
+  assert.equal(current.appearance.fontScale, 1.08);
+  assert.equal(current.appearance.cardDensity, "compact");
   assert.equal(nonAppearanceSnapshot(current), nonAppearanceBefore);
   assert.equal(JSON.parse(storage.get("shortcutDashboardData")).activeAppearancePresetId, firstResult.applyPresetId);
 
