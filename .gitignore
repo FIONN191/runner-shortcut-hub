@@ -3,4 +3,4 @@ outputs/runner-recovery/
 *.zip
 *.crx
 *.pem
-
+.superpowers/
