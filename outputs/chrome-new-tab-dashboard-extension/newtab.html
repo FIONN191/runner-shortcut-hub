@@ -190,6 +190,8 @@
         <div class="customize-section-head">
           <h4 id="appearancePresetTitle">外观预设</h4>
           <div class="preset-actions">
+            <input id="appearancePresetFileInput" type="file" accept=".json,application/json" hidden>
+            <button id="importAppearancePresetBtn" class="ghost-button" type="button">导入预设</button>
             <button id="saveAppearancePresetBtn" class="ghost-button" type="button">保存为预设</button>
             <button id="updateAppearancePresetBtn" class="ghost-button" type="button">更新当前预设</button>
           </div>
@@ -229,6 +231,21 @@
           <button id="resetAppearanceBtn" class="danger-button" type="button">重置</button>
         </div>
       </section>
+    </dialog>
+
+    <dialog id="presetImportResultDialog" class="modal preset-import-result-modal">
+      <div class="modal-head">
+        <h3 id="presetImportResultTitle">导入预设</h3>
+        <button id="closePresetImportResultBtn" class="icon-button" type="button" title="关闭">×</button>
+      </div>
+      <p id="presetImportResultMessage" class="preset-import-result-message" role="status"></p>
+      <p id="presetImportResultWarning" class="preset-import-result-warning" hidden></p>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="keepCurrentAppearanceBtn" class="ghost-button" type="button">保持当前</button>
+        <button id="applyImportedPresetBtn" class="primary-button" type="button">立即应用</button>
+        <button id="dismissPresetImportResultBtn" class="primary-button" type="button" hidden>关闭</button>
+      </div>
     </dialog>
 
     <dialog id="shortcutDialog" class="modal">

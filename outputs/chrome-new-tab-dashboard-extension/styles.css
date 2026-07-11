@@ -1365,6 +1365,32 @@ body[data-theme="light"] .modal select {
   gap: 8px;
 }
 
+.preset-import-result-modal {
+  width: min(520px, calc(100vw - 40px));
+}
+
+.preset-import-result-message,
+.preset-import-result-warning {
+  margin: 18px 0 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.preset-import-result-warning {
+  padding: 12px;
+  border: 1px solid #e8b45c;
+  color: #f4cd82;
+  background: rgba(232, 180, 92, 0.08);
+}
+
+body[data-theme="light"] .preset-import-result-warning {
+  color: #7a4b00;
+  background: rgba(180, 112, 0, 0.08);
+}
+
 .appearance-options,
 .wallpaper-grid {
   display: grid;

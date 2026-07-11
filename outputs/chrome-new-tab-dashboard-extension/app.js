@@ -6,6 +6,20 @@ const BACKGROUND_IMAGE_MAX_HEIGHT = 900;
 const BACKGROUND_IMAGE_QUALITY = 0.72;
 const BACKGROUND_IMAGE_OPTIMIZE_THRESHOLD = 520000;
 const BACKGROUND_STORAGE_OPTIMIZE_THRESHOLD = 1200000;
+const APPEARANCE_PRESET_IMPORT_TYPE = "runner-shortcut-hub-appearance-preset";
+const APPEARANCE_PRESET_IMPORT_VERSION = 1;
+const APPEARANCE_PRESET_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const IMPORTED_WALLPAPER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const IMPORTED_APPEARANCE_FIELDS = new Set([
+  "theme",
+  "background",
+  "activeCustomBackgroundId",
+  "accentColor",
+  "backgroundOpacity",
+  "backgroundBlur",
+  "panelOpacity",
+  "panelBlur"
+]);
 
 const defaultSearchEngines = [
   { id: "google", name: "Google", shortcut: "GO", searchUrl: "https://www.google.com/search?q={query}", builtin: true },
@@ -87,6 +101,7 @@ let state = structuredClone(defaultData);
 let categoryIconImageDraft = "";
 let needsDataMigration = false;
 let backgroundStorageOptimizationScheduled = false;
+let pendingImportedPresetId = "";
 const CATEGORY_LONG_PRESS_MS = 500;
 const CATEGORY_DRAG_MOVE_PX = 7;
 const SHORTCUT_LONG_PRESS_MS = 500;
@@ -198,9 +213,19 @@ const els = {
   themeColorInput: document.querySelector("#themeColorInput"),
   customThemeColorLabel: document.querySelector("#customThemeColorLabel"),
   appearancePresetTitle: document.querySelector("#appearancePresetTitle"),
+  appearancePresetFileInput: document.querySelector("#appearancePresetFileInput"),
+  importAppearancePresetBtn: document.querySelector("#importAppearancePresetBtn"),
   saveAppearancePresetBtn: document.querySelector("#saveAppearancePresetBtn"),
   updateAppearancePresetBtn: document.querySelector("#updateAppearancePresetBtn"),
   appearancePresetList: document.querySelector("#appearancePresetList"),
+  presetImportResultDialog: document.querySelector("#presetImportResultDialog"),
+  presetImportResultTitle: document.querySelector("#presetImportResultTitle"),
+  presetImportResultMessage: document.querySelector("#presetImportResultMessage"),
+  presetImportResultWarning: document.querySelector("#presetImportResultWarning"),
+  closePresetImportResultBtn: document.querySelector("#closePresetImportResultBtn"),
+  keepCurrentAppearanceBtn: document.querySelector("#keepCurrentAppearanceBtn"),
+  applyImportedPresetBtn: document.querySelector("#applyImportedPresetBtn"),
+  dismissPresetImportResultBtn: document.querySelector("#dismissPresetImportResultBtn"),
   wallpaperTitle: document.querySelector("#wallpaperTitle"),
   backgroundGrid: document.querySelector("#backgroundGrid"),
   backgroundOpacityInput: document.querySelector("#backgroundOpacityInput"),
@@ -285,6 +310,7 @@ const messages = {
     themeColorTitle: "主题色",
     customThemeColor: "自定义颜色",
     appearancePresets: "外观预设",
+    importPreset: "导入预设",
     savePreset: "保存为预设",
     updatePreset: "更新当前预设",
     noAppearancePresets: "暂无保存的预设",
@@ -295,6 +321,20 @@ const messages = {
     defaultPresetName: "预设 {number}",
     deletePresetConfirm: "删除预设「{name}」吗？",
     activePreset: "当前",
+    presetImportTitle: "导入界面预设",
+    importSuccessful: "导入成功",
+    importedPresetCount: "已导入 {count} 个界面预设。",
+    applyNow: "立即应用",
+    keepCurrent: "保持当前",
+    close: "关闭",
+    customWallpaperMissing: "预设已导入，但其自定义壁纸无法恢复，已使用回退背景。",
+    invalidPresetFile: "无效的预设文件",
+    unsupportedPresetVersion: "不支持的预设版本",
+    presetFileEmpty: "预设文件为空",
+    presetFileTooLarge: "预设文件超过 5 MB 限制",
+    presetReadFailed: "文件读取失败",
+    importFailed: "导入失败",
+    storageWriteFailed: "无法保存导入的预设",
     wallpaperTitle: "更换壁纸",
     backgroundOpacity: "背景不透明度",
     backgroundBlur: "高斯模糊",
@@ -394,6 +434,7 @@ const messages = {
     themeColorTitle: "THEME COLOR",
     customThemeColor: "CUSTOM COLOR",
     appearancePresets: "APPEARANCE PRESETS",
+    importPreset: "IMPORT PRESET",
     savePreset: "SAVE PRESET",
     updatePreset: "UPDATE CURRENT",
     noAppearancePresets: "NO SAVED PRESETS",
@@ -404,6 +445,20 @@ const messages = {
     defaultPresetName: "Preset {number}",
     deletePresetConfirm: "Delete preset \"{name}\"?",
     activePreset: "ACTIVE",
+    presetImportTitle: "IMPORT APPEARANCE PRESET",
+    importSuccessful: "Import successful",
+    importedPresetCount: "{count} appearance presets imported.",
+    applyNow: "APPLY NOW",
+    keepCurrent: "KEEP CURRENT",
+    close: "CLOSE",
+    customWallpaperMissing: "The preset was imported, but its custom wallpaper could not be restored. A fallback wallpaper was used.",
+    invalidPresetFile: "Invalid preset file",
+    unsupportedPresetVersion: "Unsupported preset version",
+    presetFileEmpty: "Preset file is empty",
+    presetFileTooLarge: "Preset file exceeds the 5 MB limit",
+    presetReadFailed: "File read failed",
+    importFailed: "Import failed",
+    storageWriteFailed: "The imported presets could not be saved",
     wallpaperTitle: "WALLPAPER",
     backgroundOpacity: "BACKGROUND OPACITY",
     backgroundBlur: "GAUSSIAN BLUR",
@@ -604,15 +659,26 @@ async function readData() {
 }
 
 async function writeData() {
-  const data = clone(state);
+  await writeDataSnapshot(clone(state));
+}
+
+async function writeDataSnapshot(data) {
+  const snapshot = clone(data);
 
   if (!hasChromeStorage()) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     return;
   }
 
-  await new Promise((resolve) => {
-    chrome.storage.local.set({ [STORAGE_KEY]: data }, resolve);
+  await new Promise((resolve, reject) => {
+    chrome.storage.local.set({ [STORAGE_KEY]: snapshot }, () => {
+      const error = chrome.runtime?.lastError;
+      if (error) {
+        reject(new Error(error.message || t("storageWriteFailed")));
+        return;
+      }
+      resolve();
+    });
   });
 }
 
@@ -1042,9 +1108,18 @@ function bindEvents() {
   els.appearanceOptions.addEventListener("click", onAppearanceOptionClick);
   els.themeColorOptions.addEventListener("click", onThemeColorOptionClick);
   els.themeColorInput.addEventListener("input", onThemeColorInput);
+  els.importAppearancePresetBtn.addEventListener("click", openPresetImportDialog);
+  els.appearancePresetFileInput.addEventListener("change", onPresetImportFileChange);
   els.saveAppearancePresetBtn.addEventListener("click", saveCurrentAppearancePreset);
   els.updateAppearancePresetBtn.addEventListener("click", updateActiveAppearancePreset);
   els.appearancePresetList.addEventListener("click", onAppearancePresetListClick);
+  els.applyImportedPresetBtn.addEventListener("click", applyPendingImportedPreset);
+  els.keepCurrentAppearanceBtn.addEventListener("click", closePresetImportResultDialog);
+  els.dismissPresetImportResultBtn.addEventListener("click", closePresetImportResultDialog);
+  els.closePresetImportResultBtn.addEventListener("click", closePresetImportResultDialog);
+  els.presetImportResultDialog.addEventListener("close", () => {
+    pendingImportedPresetId = "";
+  });
   els.backgroundGrid.addEventListener("click", onBackgroundOptionClick);
   els.backgroundOpacityInput.addEventListener("input", onBackgroundOpacityInput);
   els.backgroundBlurInput.addEventListener("input", onBackgroundBlurInput);
@@ -1234,8 +1309,13 @@ function applyI18n() {
   els.themeColorTitle.textContent = t("themeColorTitle");
   els.customThemeColorLabel.textContent = t("customThemeColor");
   els.appearancePresetTitle.textContent = t("appearancePresets");
+  els.importAppearancePresetBtn.textContent = t("importPreset");
   els.saveAppearancePresetBtn.textContent = t("savePreset");
   els.updateAppearancePresetBtn.textContent = t("updatePreset");
+  els.keepCurrentAppearanceBtn.textContent = t("keepCurrent");
+  els.applyImportedPresetBtn.textContent = t("applyNow");
+  els.dismissPresetImportResultBtn.textContent = t("close");
+  els.closePresetImportResultBtn.title = t("close");
   els.wallpaperTitle.textContent = t("wallpaperTitle");
   els.backgroundOpacityLabel.textContent = t("backgroundOpacity");
   els.backgroundBlurLabel.textContent = t("backgroundBlur");
@@ -2041,6 +2121,359 @@ async function deleteSearchEngine(engineId) {
   renderSearchPanel();
 }
 
+function openPresetImportDialog() {
+  els.appearancePresetFileInput.value = "";
+  els.appearancePresetFileInput.click();
+}
+
+async function onPresetImportFileChange(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  try {
+    const parsed = await readPresetFile(file);
+    const migrated = migrateImportedPreset(parsed);
+    validateImportedPreset(migrated);
+    const sanitized = sanitizeImportedPreset(migrated);
+    const result = await importPreset(sanitized);
+    showPresetImportSuccess(result);
+  } catch (error) {
+    showPresetImportError(error?.messageKey || "importFailed");
+  }
+}
+
+async function readPresetFile(file) {
+  const isJsonFile = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
+  if (!isJsonFile) throw presetImportError("invalidPresetFile");
+  if (!file.size) throw presetImportError("presetFileEmpty");
+  if (file.size > APPEARANCE_PRESET_IMPORT_MAX_BYTES) throw presetImportError("presetFileTooLarge");
+
+  let text;
+  try {
+    text = await file.text();
+  } catch {
+    throw presetImportError("presetReadFailed");
+  }
+  if (!text.trim()) throw presetImportError("presetFileEmpty");
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw presetImportError("invalidPresetFile");
+  }
+}
+
+function migrateImportedPreset(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw presetImportError("invalidPresetFile");
+  }
+
+  if (data.type === APPEARANCE_PRESET_IMPORT_TYPE) {
+    if (!Object.prototype.hasOwnProperty.call(data, "version")) {
+      throw presetImportError("invalidPresetFile");
+    }
+    if (Number(data.version) !== APPEARANCE_PRESET_IMPORT_VERSION) {
+      throw presetImportError("unsupportedPresetVersion");
+    }
+    const presets = Array.isArray(data.presets) ? data.presets : (data.preset ? [data.preset] : []);
+    return createMigratedPresetEnvelope(data, presets, data.activePresetId || data.activeAppearancePresetId);
+  }
+
+  if (data.format === "runner-shortcut-hub-appearance-backup") {
+    if (!Object.prototype.hasOwnProperty.call(data, "formatVersion")) {
+      throw presetImportError("invalidPresetFile");
+    }
+    if (Number(data.formatVersion) !== APPEARANCE_PRESET_IMPORT_VERSION) {
+      throw presetImportError("unsupportedPresetVersion");
+    }
+    let presets = Array.isArray(data.appearancePresets) ? data.appearancePresets : [];
+    if (!presets.length && isPlainObject(data.appearance)) {
+      presets = [{
+        id: "imported-current",
+        name: data.presetName || "Imported Preset",
+        appearance: data.appearance
+      }];
+    }
+    return createMigratedPresetEnvelope(data, presets, data.activeAppearancePresetId);
+  }
+
+  throw presetImportError("invalidPresetFile");
+}
+
+function createMigratedPresetEnvelope(source, presets, activePresetId) {
+  const backgrounds = [];
+  const addBackgrounds = (items) => {
+    if (Array.isArray(items)) backgrounds.push(...items);
+  };
+  addBackgrounds(source.backgrounds);
+  addBackgrounds(source.backgroundFiles);
+  addBackgrounds(source.appearance?.customBackgroundImages);
+  presets.forEach((preset) => addBackgrounds(preset?.appearance?.customBackgroundImages));
+
+  return {
+    type: APPEARANCE_PRESET_IMPORT_TYPE,
+    version: APPEARANCE_PRESET_IMPORT_VERSION,
+    activePresetId: String(activePresetId || ""),
+    presets,
+    backgrounds
+  };
+}
+
+function validateImportedPreset(data) {
+  if (data.type !== APPEARANCE_PRESET_IMPORT_TYPE || data.version !== APPEARANCE_PRESET_IMPORT_VERSION) {
+    throw presetImportError("invalidPresetFile");
+  }
+  if (!Array.isArray(data.presets) || !data.presets.length || data.presets.length > 500) {
+    throw presetImportError("invalidPresetFile");
+  }
+
+  data.presets.forEach((preset) => {
+    const name = typeof preset?.name === "string" ? preset.name.trim() : "";
+    const appearance = preset?.appearance;
+    const hasAppearanceField = isPlainObject(appearance)
+      && Object.keys(appearance).some((key) => IMPORTED_APPEARANCE_FIELDS.has(key));
+    if (!name || !hasAppearanceField) throw presetImportError("invalidPresetFile");
+  });
+}
+
+function sanitizeImportedPreset(data) {
+  return {
+    activePresetId: String(data.activePresetId || "").slice(0, 120),
+    presets: data.presets.map((preset) => ({
+      sourceId: String(preset.id || "").slice(0, 120),
+      name: String(preset.name).trim().slice(0, 40),
+      appearance: sanitizeImportedAppearanceFields(preset.appearance),
+      createdAt: normalizeTimestamp(preset.createdAt),
+      updatedAt: normalizeTimestamp(preset.updatedAt)
+    })),
+    backgrounds: (Array.isArray(data.backgrounds) ? data.backgrounds : [])
+      .filter((item) => typeof item === "string" || isPlainObject(item))
+      .slice(0, 100)
+  };
+}
+
+function sanitizeImportedAppearanceFields(appearance) {
+  const sanitized = {};
+  IMPORTED_APPEARANCE_FIELDS.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(appearance, field)) sanitized[field] = appearance[field];
+  });
+  return sanitized;
+}
+
+async function importPreset(importedData) {
+  const currentAppearance = normalizeAppearance(state.appearance);
+  const candidateBackgrounds = currentAppearance.customBackgroundImages.map((item) => ({ ...item }));
+  const backgroundIdMap = new Map();
+
+  importedData.backgrounds.forEach((background, index) => {
+    const source = typeof background === "string" ? { image: background } : background;
+    const sourceId = sanitizeCustomBackgroundId(source.id || source.storageKey || `imported-bg-${index + 1}`);
+    const storedId = sanitizeCustomBackgroundId(source.storageKey || source.internalStorageKey || "");
+    const existingByReference = candidateBackgrounds.find((item) => item.id === storedId || item.id === sourceId);
+    const image = extractImportedBackgroundImage(source);
+
+    if (!image) {
+      if (existingByReference && sourceId) backgroundIdMap.set(sourceId, existingByReference.id);
+      return;
+    }
+
+    const existingByImage = candidateBackgrounds.find((item) => item.image === image);
+    if (existingByImage) {
+      if (sourceId) backgroundIdMap.set(sourceId, existingByImage.id);
+      return;
+    }
+
+    const importedBackground = normalizeCustomBackgroundItem({
+      id: sourceId || `imported-bg-${index + 1}`,
+      name: source.name || `Imported ${index + 1}`,
+      image,
+      accentColor: source.accentColor
+    }, candidateBackgrounds.length, candidateBackgrounds);
+    if (!importedBackground) return;
+    candidateBackgrounds.push(importedBackground);
+    if (sourceId) backgroundIdMap.set(sourceId, importedBackground.id);
+  });
+
+  const existingPresets = state.appearancePresets.map((preset) => clone(preset));
+  const importedPresets = [];
+  const presetIdMap = new Map();
+  let wallpaperMissing = false;
+
+  importedData.presets.forEach((preset, index) => {
+    const importedAppearance = buildImportedAppearance(
+      preset.appearance,
+      currentAppearance,
+      candidateBackgrounds,
+      backgroundIdMap
+    );
+    wallpaperMissing ||= importedAppearance.wallpaperMissing;
+    const name = uniqueImportedPresetName(preset.name, existingPresets.concat(importedPresets));
+    const id = uniqueAppearancePresetId(
+      createId(`imported-${preset.sourceId || name || index + 1}`),
+      existingPresets.concat(importedPresets)
+    );
+    const now = Date.now();
+    importedPresets.push({
+      id,
+      name,
+      appearance: importedAppearance.appearance,
+      createdAt: preset.createdAt || now,
+      updatedAt: preset.updatedAt || now
+    });
+    if (preset.sourceId) presetIdMap.set(preset.sourceId, id);
+  });
+
+  const candidate = clone(state);
+  candidate.appearance = {
+    ...currentAppearance,
+    customBackgroundImages: candidateBackgrounds
+  };
+  candidate.appearancePresets = existingPresets.concat(importedPresets);
+  const applyPresetId = presetIdMap.get(importedData.activePresetId) || importedPresets[0]?.id || "";
+
+  try {
+    await writeDataSnapshot(candidate);
+  } catch {
+    throw presetImportError("storageWriteFailed");
+  }
+
+  state = candidate;
+  renderCustomizerControls();
+  return { count: importedPresets.length, applyPresetId, wallpaperMissing };
+}
+
+function buildImportedAppearance(rawAppearance, currentAppearance, customBackgroundImages, backgroundIdMap) {
+  const availableBackgroundIds = new Set(backgroundPresets.map((item) => item.id).concat("custom"));
+  const sourceCustomId = sanitizeCustomBackgroundId(rawAppearance.activeCustomBackgroundId);
+  const mappedCustomId = backgroundIdMap.get(sourceCustomId)
+    || customBackgroundImages.find((item) => item.id === sourceCustomId)?.id
+    || "";
+  const candidate = {
+    theme: appearanceModes.some((item) => item.id === rawAppearance.theme) ? rawAppearance.theme : currentAppearance.theme,
+    background: availableBackgroundIds.has(rawAppearance.background) ? rawAppearance.background : currentAppearance.background,
+    activeCustomBackgroundId: mappedCustomId,
+    accentColor: normalizeHexColor(rawAppearance.accentColor) || currentAppearance.accentColor,
+    backgroundOpacity: clampNumber(rawAppearance.backgroundOpacity, 0.15, 1, currentAppearance.backgroundOpacity),
+    backgroundBlur: Math.round(clampNumber(rawAppearance.backgroundBlur, 0, 28, currentAppearance.backgroundBlur)),
+    panelOpacity: clampNumber(rawAppearance.panelOpacity, 0.1, 1, currentAppearance.panelOpacity),
+    panelBlur: Math.round(clampNumber(rawAppearance.panelBlur, 0, 36, currentAppearance.panelBlur)),
+    customBackgroundImages
+  };
+  let wallpaperMissing = false;
+
+  if (candidate.background === "custom" && !candidate.activeCustomBackgroundId) {
+    wallpaperMissing = true;
+    if (currentAppearance.background === "custom" && currentAppearance.activeCustomBackgroundId) {
+      candidate.activeCustomBackgroundId = currentAppearance.activeCustomBackgroundId;
+    } else {
+      candidate.background = "plain";
+    }
+  }
+
+  return {
+    appearance: compactAppearanceSnapshot(normalizeAppearance(candidate)),
+    wallpaperMissing
+  };
+}
+
+function extractImportedBackgroundImage(background) {
+  const direct = [background.image, background.dataUrl, background.data]
+    .find((value) => typeof value === "string" && value.startsWith("data:"));
+  if (direct) return validateImportedImageDataUrl(direct);
+
+  const blob = isPlainObject(background.blob) ? background.blob : {};
+  const mimeType = String(background.mimeType || background.type || blob.mimeType || blob.type || "").toLowerCase();
+  const base64 = typeof background.base64 === "string"
+    ? background.base64
+    : (typeof background.data === "string"
+      ? background.data
+      : (typeof blob.base64 === "string" ? blob.base64 : (typeof blob.data === "string" ? blob.data : "")));
+  if (!IMPORTED_WALLPAPER_MIME_TYPES.has(mimeType) || !base64) return "";
+  return validateImportedImageDataUrl(`data:${mimeType};base64,${base64}`);
+}
+
+function validateImportedImageDataUrl(value) {
+  const match = String(value || "").trim().match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([a-z0-9+/=\s]+)$/i);
+  if (!match || !IMPORTED_WALLPAPER_MIME_TYPES.has(match[1].toLowerCase())) return "";
+  const base64 = match[2].replace(/\s+/g, "");
+  if (!base64) return "";
+  try {
+    atob(base64);
+  } catch {
+    return "";
+  }
+  return `data:${match[1].toLowerCase()};base64,${base64}`;
+}
+
+function uniqueImportedPresetName(name, presets) {
+  const original = String(name || "").trim().slice(0, 40);
+  const used = new Set(presets.map((preset) => preset.name.toLocaleLowerCase()));
+  if (!used.has(original.toLocaleLowerCase())) return original;
+
+  let index = 1;
+  while (index < 10000) {
+    const suffix = index === 1 ? " (Imported)" : ` (Imported ${index})`;
+    const candidate = `${original.slice(0, Math.max(1, 40 - suffix.length))}${suffix}`;
+    if (!used.has(candidate.toLocaleLowerCase())) return candidate;
+    index += 1;
+  }
+  return `${original.slice(0, 24)} (${Date.now()})`.slice(0, 40);
+}
+
+function showPresetImportSuccess(result) {
+  pendingImportedPresetId = result.applyPresetId;
+  els.presetImportResultTitle.textContent = t("importSuccessful");
+  els.presetImportResultMessage.textContent = t("importedPresetCount", { count: result.count });
+  els.presetImportResultWarning.textContent = result.wallpaperMissing ? t("customWallpaperMissing") : "";
+  els.presetImportResultWarning.hidden = !result.wallpaperMissing;
+  els.keepCurrentAppearanceBtn.hidden = false;
+  els.applyImportedPresetBtn.hidden = !pendingImportedPresetId;
+  els.dismissPresetImportResultBtn.hidden = true;
+  openPresetImportResultDialog();
+}
+
+function showPresetImportError(messageKey) {
+  pendingImportedPresetId = "";
+  els.presetImportResultTitle.textContent = t("importFailed");
+  els.presetImportResultMessage.textContent = t(messageKey);
+  els.presetImportResultWarning.hidden = true;
+  els.keepCurrentAppearanceBtn.hidden = true;
+  els.applyImportedPresetBtn.hidden = true;
+  els.dismissPresetImportResultBtn.hidden = false;
+  openPresetImportResultDialog();
+}
+
+function openPresetImportResultDialog() {
+  if (!els.presetImportResultDialog.open) els.presetImportResultDialog.showModal();
+}
+
+function closePresetImportResultDialog() {
+  pendingImportedPresetId = "";
+  if (els.presetImportResultDialog.open) els.presetImportResultDialog.close();
+}
+
+async function applyPendingImportedPreset() {
+  const presetId = pendingImportedPresetId;
+  if (!presetId) return;
+  try {
+    await applyAppearancePreset(presetId);
+    closePresetImportResultDialog();
+  } catch {
+    showPresetImportError("storageWriteFailed");
+  }
+}
+
+function presetImportError(messageKey) {
+  const error = new Error(messageKey);
+  error.messageKey = messageKey;
+  return error;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 async function saveCurrentAppearancePreset() {
   const defaultName = t("defaultPresetName", { number: state.appearancePresets.length + 1 });
   const nameInput = prompt(t("presetNamePrompt"), defaultName);
@@ -2109,13 +2542,15 @@ async function applyAppearancePreset(presetId) {
   const preset = state.appearancePresets.find((item) => item.id === presetId);
   if (!preset) return;
   const currentAppearance = normalizeAppearance(state.appearance);
-  state.appearance = normalizeAppearance({
+  const candidate = clone(state);
+  candidate.appearance = normalizeAppearance({
     ...currentAppearance,
     ...preset.appearance,
     customBackgroundImages: currentAppearance.customBackgroundImages
   });
-  state.activeAppearancePresetId = preset.id;
-  await writeData();
+  candidate.activeAppearancePresetId = preset.id;
+  await writeDataSnapshot(candidate);
+  state = candidate;
   render();
 }
 
