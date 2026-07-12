@@ -43,7 +43,7 @@ body {
   overflow-x: hidden;
 }
 
-body[data-theme="light"] {
+body[data-color-mode="light"] {
   color-scheme: light;
   --bg: #f3f6ec;
   --panel: rgba(246, 249, 239, 0.9);
@@ -1235,8 +1235,8 @@ body[data-card-density="spacious"] .shortcut-card {
   outline: 0;
 }
 
-body[data-theme="light"] .modal input,
-body[data-theme="light"] .modal select {
+body[data-color-mode="light"] .modal input,
+body[data-color-mode="light"] .modal select {
   background: rgba(255, 255, 255, 0.7);
 }
 
@@ -1571,7 +1571,7 @@ body[data-theme="light"] .modal select {
   background: rgba(232, 180, 92, 0.08);
 }
 
-body[data-theme="light"] .preset-import-result-warning {
+body[data-color-mode="light"] .preset-import-result-warning {
   color: #7a4b00;
   background: rgba(180, 112, 0, 0.08);
 }

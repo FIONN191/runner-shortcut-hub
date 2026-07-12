@@ -1,0 +1,25 @@
+html[data-theme="custom"] {
+  --background-page: #080a08;
+  --background-panel: rgb(10 11 10 / 82%);
+  --background-card: rgb(17 19 16 / 82%);
+  --background-hover: rgb(var(--accent-rgb) / 12%);
+  --text-primary: #f4f5ef;
+  --text-secondary: #b8beaf;
+  --text-muted: #747b6f;
+  --border-default: rgb(var(--accent-rgb) / 25%);
+  --border-strong: rgb(var(--accent-rgb) / 72%);
+  --action-primary: var(--accent);
+  --action-primary-hover: var(--accent);
+  --action-danger: #ff4d45;
+  --focus-ring: #6cf0ff;
+  --surface-shadow: var(--shadow);
+  --surface-backdrop: blur(var(--panel-blur)) saturate(1.08);
+}
+
+html[data-theme="custom"] body:not(.has-custom-background) {
+  background:
+    linear-gradient(90deg, rgb(var(--accent-rgb) / 6%) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(var(--accent-rgb) / 4%) 1px, transparent 1px),
+    linear-gradient(160deg, var(--background-page), #121812);
+  background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size), 100% 100%;
+}

@@ -1,0 +1,56 @@
+html[data-theme="liquid-glass"] {
+  --background-page: #07131a;
+  --background-panel: rgb(16 31 40 / 58%);
+  --background-card: rgb(20 41 53 / 52%);
+  --background-hover: rgb(49 93 112 / 58%);
+  --text-primary: #f5fbff;
+  --text-secondary: #b7cbd4;
+  --text-muted: #7795a2;
+  --border-default: rgb(185 229 242 / 22%);
+  --border-strong: rgb(204 244 255 / 68%);
+  --action-primary: #8ee8ff;
+  --action-primary-hover: #c7f5ff;
+  --action-danger: #ff746d;
+  --focus-ring: #d3f7ff;
+  --surface-shadow: 0 20px 60px rgb(0 10 18 / 35%);
+  --surface-backdrop: blur(22px) saturate(1.35);
+}
+
+html[data-theme="liquid-glass"] body:not(.has-custom-background) {
+  background:
+    radial-gradient(circle at 12% 18%, rgb(86 203 229 / 24%), transparent 30%),
+    radial-gradient(circle at 84% 12%, rgb(105 114 255 / 22%), transparent 34%),
+    linear-gradient(145deg, #061117, #0b2633 52%, #0b1827);
+}
+
+html[data-theme="liquid-glass"] .brand,
+html[data-theme="liquid-glass"] .search,
+html[data-theme="liquid-glass"] .system-panel,
+html[data-theme="liquid-glass"] .workspace,
+html[data-theme="liquid-glass"] .shortcut-card,
+html[data-theme="liquid-glass"] .global-rail,
+html[data-theme="liquid-glass"] .system-footer,
+html[data-theme="liquid-glass"] .modal {
+  border-color: var(--border-default);
+  background: var(--background-panel);
+  box-shadow: var(--surface-shadow);
+  backdrop-filter: var(--surface-backdrop);
+  -webkit-backdrop-filter: var(--surface-backdrop);
+}
+
+html[data-theme="liquid-glass"] .shortcut-card {
+  background: var(--background-card);
+}
+
+html[data-theme="liquid-glass"] .brand::before,
+html[data-theme="liquid-glass"] .brand::after,
+html[data-theme="liquid-glass"] .search::before,
+html[data-theme="liquid-glass"] .search::after,
+html[data-theme="liquid-glass"] .system-panel::before,
+html[data-theme="liquid-glass"] .system-panel::after,
+html[data-theme="liquid-glass"] .workspace::before,
+html[data-theme="liquid-glass"] .workspace::after,
+html[data-theme="liquid-glass"] .shortcut-card::before,
+html[data-theme="liquid-glass"] .shortcut-card::after {
+  opacity: .35;
+}

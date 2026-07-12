@@ -4,10 +4,31 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Runner Shortcut Hub</title>
+    <link rel="stylesheet" href="styles/tokens.css">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/themes/lost-starship.css">
+    <link rel="stylesheet" href="styles/themes/liquid-glass.css">
+    <link rel="stylesheet" href="styles/themes/custom.css">
+    <link rel="stylesheet" href="styles/v2.css">
   </head>
   <body>
     <main class="shell">
+      <nav id="globalRail" class="global-rail" aria-label="">
+        <button id="railHomeBtn" class="rail-button is-active" type="button" data-rail-action="home">
+          <span aria-hidden="true">⌂</span>
+        </button>
+        <button id="railSearchBtn" class="rail-button" type="button" data-rail-action="search">
+          <span aria-hidden="true">⌕</span>
+        </button>
+        <button id="railCategoriesBtn" class="rail-button" type="button" data-rail-action="categories">
+          <span aria-hidden="true">▦</span>
+        </button>
+        <span class="rail-spacer" aria-hidden="true"></span>
+        <button id="railCustomizeBtn" class="rail-button" type="button" data-rail-action="customize">
+          <span aria-hidden="true">⚙</span>
+        </button>
+      </nav>
+
       <section id="topbar" class="topbar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true"></span>
@@ -74,6 +95,13 @@
           <p id="emptyState" class="empty-state" hidden></p>
         </section>
       </section>
+
+      <footer class="system-footer" aria-live="polite">
+        <span id="footerProduct">Runner Shortcut Hub</span>
+        <span id="footerStatus"></span>
+        <span id="footerTheme"></span>
+        <span id="footerVersion">v0.5.0</span>
+      </footer>
 
       <section id="classicHome" class="classic-home" hidden>
         <div class="classic-toolbar">
@@ -171,6 +199,14 @@
       </div>
 
       <div class="customize-body">
+        <section class="customize-section design-theme-section">
+          <div class="customize-section-heading">
+            <h4 id="designThemeTitle"></h4>
+            <span class="section-code">SYS.THEME / 01</span>
+          </div>
+          <div id="designThemeOptions" class="design-theme-options" role="list"></div>
+        </section>
+
         <section class="customize-section">
           <h4 id="languageTitle"></h4>
           <div id="languageOptions" class="segmented-options language-options" role="group"></div>

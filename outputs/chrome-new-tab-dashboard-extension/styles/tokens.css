@@ -1,0 +1,53 @@
+:root {
+  --background-page: #050505;
+  --background-panel: #0a0c09;
+  --background-card: #0d100c;
+  --background-hover: #14180f;
+  --text-primary: #f4f5ef;
+  --text-secondary: #969b8e;
+  --text-muted: #62675d;
+  --border-default: rgb(215 255 0 / 28%);
+  --border-strong: rgb(215 255 0 / 72%);
+  --action-primary: #d7ff00;
+  --action-primary-hover: #e5ff4a;
+  --action-danger: #ff4d45;
+  --focus-ring: #6cf0ff;
+  --surface-shadow: none;
+  --surface-backdrop: none;
+  --grid-size: 72px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-normal: 220ms;
+  --duration-slow: 360ms;
+  --duration-scene: 600ms;
+  --ease-ui: cubic-bezier(.2, .8, .2, 1);
+  --ease-sharp: cubic-bezier(.4, 0, .2, 1);
+  --font-display-en: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --font-ui-en: Inter, "Helvetica Neue", Arial, sans-serif;
+  --font-display-zh: "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui-zh: "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-display-zh);
+  --font-ui: var(--font-ui-zh);
+}
+
+html[lang="en"] {
+  --font-display: var(--font-display-en);
+  --font-ui: var(--font-ui-en);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 1ms;
+    --duration-fast: 1ms;
+    --duration-normal: 1ms;
+    --duration-slow: 1ms;
+    --duration-scene: 1ms;
+  }
+}

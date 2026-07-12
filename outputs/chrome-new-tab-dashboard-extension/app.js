@@ -13,6 +13,7 @@ const APPEARANCE_PRESET_IMPORT_VERSION = 1;
 const APPEARANCE_PRESET_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const IMPORTED_WALLPAPER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const IMPORTED_APPEARANCE_FIELDS = new Set([
+  "designTheme",
   "theme",
   "background",
   "activeCustomBackgroundId",
@@ -41,11 +42,13 @@ const defaultSearchEngines = [
 ];
 
 const defaultData = {
+  schemaVersion: 2,
   locale: "zh-CN",
   mode: "runner",
   searchEngines: structuredClone(defaultSearchEngines),
   activeSearchEngineId: "google",
   appearance: {
+    designTheme: "lost-starship",
     theme: "dark",
     background: "runner-grid",
     customBackgroundImages: [],
@@ -155,6 +158,11 @@ const shortcutDrag = {
 
 const els = {
   doc: document.documentElement,
+  globalRail: document.querySelector("#globalRail"),
+  railHomeBtn: document.querySelector("#railHomeBtn"),
+  railSearchBtn: document.querySelector("#railSearchBtn"),
+  railCategoriesBtn: document.querySelector("#railCategoriesBtn"),
+  railCustomizeBtn: document.querySelector("#railCustomizeBtn"),
   topbar: document.querySelector("#topbar"),
   brandKicker: document.querySelector("#brandKicker"),
   brandTitle: document.querySelector("#brandTitle"),
@@ -230,6 +238,8 @@ const els = {
   saveSearchEngineBtn: document.querySelector("#saveSearchEngineBtn"),
   customizeDialog: document.querySelector("#customizeDialog"),
   customizeDialogTitle: document.querySelector("#customizeDialogTitle"),
+  designThemeTitle: document.querySelector("#designThemeTitle"),
+  designThemeOptions: document.querySelector("#designThemeOptions"),
   languageTitle: document.querySelector("#languageTitle"),
   languageOptions: document.querySelector("#languageOptions"),
   appearanceTitle: document.querySelector("#appearanceTitle"),
@@ -314,7 +324,10 @@ const els = {
   shortcutError: document.querySelector("#shortcutError"),
   deleteShortcutBtn: document.querySelector("#deleteShortcutBtn"),
   cancelShortcutBtn: document.querySelector("#cancelShortcutBtn"),
-  saveShortcutBtn: document.querySelector("#saveShortcutBtn")
+  saveShortcutBtn: document.querySelector("#saveShortcutBtn"),
+  footerStatus: document.querySelector("#footerStatus"),
+  footerTheme: document.querySelector("#footerTheme"),
+  footerVersion: document.querySelector("#footerVersion")
 };
 
 const translations = {
@@ -373,6 +386,19 @@ const translations = {
     nativeHome: "Chrome 原版",
     customize: "自定义",
     customizeTitle: "自定义",
+    designThemeTitle: "界面主题",
+    designThemeLostStarship: "失落星船",
+    designThemeLiquidGlass: "液态玻璃",
+    designThemeCustom: "自定义",
+    designThemeLostStarshipCopy: "工业网格、酸性高亮与系统数据界面",
+    designThemeLiquidGlassCopy: "通透层次、柔和景深与流动高光",
+    designThemeCustomCopy: "使用你的主题色、圆角和壁纸组合",
+    railHome: "主页",
+    railSearch: "聚焦搜索",
+    railCategories: "分类导航",
+    railCustomize: "打开自定义",
+    footerReady: "本地数据已就绪",
+    footerTheme: "主题：{theme}",
     languageTitle: "语言",
     languageChinese: "简体中文",
     languageEnglish: "English",
@@ -536,6 +562,19 @@ const translations = {
     nativeHome: "Chrome Original",
     customize: "Customize",
     customizeTitle: "Customize",
+    designThemeTitle: "Interface Theme",
+    designThemeLostStarship: "Lost Starship",
+    designThemeLiquidGlass: "Liquid Glass",
+    designThemeCustom: "Custom",
+    designThemeLostStarshipCopy: "Industrial grid, acid highlights, and system data",
+    designThemeLiquidGlassCopy: "Translucent depth, soft focus, and fluid light",
+    designThemeCustomCopy: "Use your color, radius, and wallpaper settings",
+    railHome: "Home",
+    railSearch: "Focus Search",
+    railCategories: "Category Navigation",
+    railCustomize: "Open Customize",
+    footerReady: "Local data ready",
+    footerTheme: "Theme: {theme}",
     languageTitle: "Language",
     languageChinese: "简体中文",
     languageEnglish: "English",
@@ -696,6 +735,27 @@ const appearanceModes = [
   { id: "light", labelKey: "themeLight" },
   { id: "dark", labelKey: "themeDark" },
   { id: "system", labelKey: "themeSystem" }
+];
+
+const designThemes = [
+  {
+    id: "lost-starship",
+    labelKey: "designThemeLostStarship",
+    copyKey: "designThemeLostStarshipCopy",
+    code: "LS-01"
+  },
+  {
+    id: "liquid-glass",
+    labelKey: "designThemeLiquidGlass",
+    copyKey: "designThemeLiquidGlassCopy",
+    code: "LG-02"
+  },
+  {
+    id: "custom",
+    labelKey: "designThemeCustom",
+    copyKey: "designThemeCustomCopy",
+    code: "CU-03"
+  }
 ];
 
 const localeOptions = [
@@ -972,6 +1032,7 @@ function normalizeState(data) {
 
   const activeCategoryId = categoryIds.has(data.activeCategoryId) ? data.activeCategoryId : categories[0].id;
   return {
+    schemaVersion: 2,
     locale,
     mode,
     searchEngines,
@@ -1081,6 +1142,9 @@ function createStableShortcutId(preferredId, existingShortcuts) {
 }
 
 function normalizeAppearance(appearance = {}) {
+  const designTheme = designThemes.some((theme) => theme.id === appearance.designTheme)
+    ? appearance.designTheme
+    : "lost-starship";
   const theme = appearanceModes.some((mode) => mode.id === appearance.theme) ? appearance.theme : "dark";
   const backgroundIds = new Set(backgroundPresets.map((preset) => preset.id).concat("custom"));
   const customBackgroundImages = normalizeCustomBackgroundImages(appearance);
@@ -1106,6 +1170,7 @@ function normalizeAppearance(appearance = {}) {
     ? appearance.cardDensity
     : defaultData.appearance.cardDensity;
   return {
+    designTheme,
     theme,
     background: background === "custom" && !activeCustomBackgroundId ? "runner-grid" : background,
     customBackgroundImages,
@@ -1178,6 +1243,7 @@ function snapshotCurrentAppearance() {
 
 function compactAppearanceSnapshot(appearance) {
   return {
+    designTheme: appearance.designTheme,
     theme: appearance.theme,
     background: appearance.background,
     activeCustomBackgroundId: appearance.activeCustomBackgroundId || "",
@@ -1356,7 +1422,18 @@ function bindEvents() {
   els.cancelSearchEngineBtn.addEventListener("click", resetSearchEngineForm);
   els.deleteSearchEngineBtn.addEventListener("click", deleteEditingSearchEngine);
   els.customizeBtn.addEventListener("click", openCustomizeDialog);
+  els.railHomeBtn.addEventListener("click", () => setMode("runner"));
+  els.railSearchBtn.addEventListener("click", () => {
+    setMode("runner");
+    requestAnimationFrame(() => els.searchInput.focus());
+  });
+  els.railCategoriesBtn.addEventListener("click", () => {
+    setMode("runner");
+    els.categoryList.querySelector("button")?.focus();
+  });
+  els.railCustomizeBtn.addEventListener("click", openCustomizeDialog);
   els.languageOptions.addEventListener("click", onLanguageOptionClick);
+  els.designThemeOptions.addEventListener("click", onDesignThemeOptionClick);
   els.appearanceOptions.addEventListener("click", onAppearanceOptionClick);
   els.themeColorOptions.addEventListener("click", onThemeColorOptionClick);
   els.themeColorInput.addEventListener("input", onThemeColorInput);
@@ -1586,6 +1663,7 @@ function applyI18n() {
   setLabelText(els.searchEngineShortcutInput, t("searchEngineShortcut"));
   setLabelText(els.searchEngineUrlInput, t("searchEngineUrl"));
   els.customizeDialogTitle.textContent = t("customizeTitle");
+  els.designThemeTitle.textContent = t("designThemeTitle");
   els.languageTitle.textContent = t("languageTitle");
   els.appearanceTitle.textContent = t("appearanceTitle");
   els.themeColorTitle.textContent = t("themeColorTitle");
@@ -1623,6 +1701,14 @@ function applyI18n() {
   els.confirmResetAppearanceBtn.textContent = t("confirmReset");
   els.closeResetAppearanceDialogBtn.title = t("closeDialog");
   els.closeResetAppearanceDialogBtn.setAttribute("aria-label", t("closeDialog"));
+  els.globalRail.setAttribute("aria-label", t("topbarLabel"));
+  setRailButtonLabel(els.railHomeBtn, t("railHome"));
+  setRailButtonLabel(els.railSearchBtn, t("railSearch"));
+  setRailButtonLabel(els.railCategoriesBtn, t("railCategories"));
+  setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
+  els.footerStatus.textContent = t("footerReady");
+  els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "0.5.0"}`;
   setLabelText(els.shortcutTitleInput, t("shortcutTitle"));
   setLabelText(els.shortcutUrlInput, t("shortcutUrl"));
   setLabelText(els.shortcutCategorySelect, t("shortcutCategory"));
@@ -1639,6 +1725,16 @@ function applyI18n() {
   if (els.presetImportResultDialog.open) renderPresetImportResult();
 }
 
+function setRailButtonLabel(button, label) {
+  button.title = label;
+  button.setAttribute("aria-label", label);
+}
+
+function getDesignThemeLabel(themeId) {
+  const theme = designThemes.find((item) => item.id === themeId) || designThemes[0];
+  return t(theme.labelKey);
+}
+
 function setLabelText(control, text) {
   const label = control.closest("label");
   if (!label) return;
@@ -1652,7 +1748,8 @@ function applyAppearance() {
   const resolvedTheme = appearance.theme === "system" ? systemTheme() : appearance.theme;
   const accentRgb = hexToRgb(appearance.accentColor);
   const activeCustomBackground = getActiveCustomBackground(appearance);
-  document.body.dataset.theme = resolvedTheme;
+  document.documentElement.dataset.theme = appearance.designTheme;
+  document.body.dataset.colorMode = resolvedTheme;
   document.body.dataset.background = appearance.background;
   document.body.dataset.cardDensity = appearance.cardDensity;
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
@@ -1715,6 +1812,7 @@ function openCustomizeDialog() {
 }
 
 function renderCustomizerControls() {
+  renderDesignThemeOptions();
   renderLanguageOptions();
   renderAppearanceOptions();
   renderThemeColorOptions();
@@ -1723,6 +1821,33 @@ function renderCustomizerControls() {
   renderBackgroundOptions();
   renderBackgroundTuningControls();
   els.removeBackgroundBtn.hidden = !(state.appearance.background === "custom" && getActiveCustomBackground());
+}
+
+function renderDesignThemeOptions() {
+  els.designThemeOptions.replaceChildren(
+    ...designThemes.map((theme, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "design-theme-option";
+      button.dataset.designTheme = theme.id;
+      button.setAttribute("aria-current", String(state.appearance.designTheme === theme.id));
+      button.innerHTML = `
+        <span class="design-theme-visual theme-${theme.id}" aria-hidden="true">
+          <span class="theme-visual-index">0${index + 1}</span>
+          <span class="theme-visual-grid"></span>
+        </span>
+        <span class="design-theme-copy">
+          <span class="design-theme-code"></span>
+          <strong></strong>
+          <small></small>
+        </span>
+      `;
+      button.querySelector(".design-theme-code").textContent = theme.code;
+      button.querySelector("strong").textContent = t(theme.labelKey);
+      button.querySelector("small").textContent = t(theme.copyKey);
+      return button;
+    })
+  );
 }
 
 function renderLanguageOptions() {
@@ -2984,6 +3109,15 @@ async function deleteAppearancePreset(presetId) {
   }
   await writeData();
   renderCustomizerControls();
+}
+
+async function onDesignThemeOptionClick(event) {
+  const button = event.target.closest("[data-design-theme]");
+  if (!button || button.dataset.designTheme === state.appearance.designTheme) return;
+  state.appearance.designTheme = button.dataset.designTheme;
+  applyAppearance();
+  renderDesignThemeOptions();
+  await writeData();
 }
 
 async function onAppearanceOptionClick(event) {

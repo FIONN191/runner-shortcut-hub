@@ -1,0 +1,34 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "..");
+const extensionRoot = path.join(root, "outputs", "chrome-new-tab-dashboard-extension");
+const read = (relativePath) => fs.readFileSync(path.join(extensionRoot, relativePath), "utf8");
+
+const html = read("newtab.html");
+const app = read("app.js");
+const tokens = read("styles/tokens.css");
+const v2 = read("styles/v2.css");
+const lostStarship = read("styles/themes/lost-starship.css");
+const liquidGlass = read("styles/themes/liquid-glass.css");
+const custom = read("styles/themes/custom.css");
+
+assert.match(html, /id="designThemeOptions"/);
+assert.match(html, /styles\/themes\/lost-starship\.css/);
+assert.match(html, /styles\/themes\/liquid-glass\.css/);
+assert.match(html, /styles\/themes\/custom\.css/);
+assert.match(app, /designTheme:\s*"lost-starship"/);
+assert.match(app, /document\.documentElement\.dataset\.theme\s*=\s*appearance\.designTheme/);
+assert.match(app, /designTheme:\s*appearance\.designTheme/);
+assert.match(tokens, /--background-page:/);
+assert.match(tokens, /--duration-scene:\s*600ms/);
+assert.match(tokens, /--font-display-zh:/);
+assert.match(lostStarship, /html\[data-theme="lost-starship"\]/);
+assert.match(liquidGlass, /html\[data-theme="liquid-glass"\]/);
+assert.match(custom, /html\[data-theme="custom"\]/);
+assert.match(v2, /\.customize-modal\s*\{/);
+assert.match(v2, /margin:\s*0 0 0 auto/);
+assert.match(v2, /@media \(prefers-reduced-motion: reduce\)/);
+
+console.log("Theme v2 tests passed");
