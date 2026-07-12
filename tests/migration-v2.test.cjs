@@ -99,6 +99,32 @@ function deepFreeze(value) {
   assert.equal(legacyLimits.appearance.customTheme.surfaceOpacity, 0.1);
   assert.deepEqual(migrateStateV2(legacyLimits), legacyLimits);
 
+  const conflictingV1 = {
+    schemaVersion: 1,
+    appearance: {
+      theme: "light",
+      colorMode: "dark",
+      designTheme: "custom",
+      customTheme: {
+        accent: "#abcdef",
+        futureToken: { keep: true }
+      },
+      futureAppearance: { keep: "legacy" }
+    },
+    futureFeature: { keep: "root" }
+  };
+  const conflictingV1Json = JSON.stringify(conflictingV1);
+  const migratedConflictingV1 = migrateStateV2(conflictingV1);
+  assert.equal(migratedConflictingV1.schemaVersion, 2);
+  assert.equal(migratedConflictingV1.appearance.theme, "light");
+  assert.equal(migratedConflictingV1.appearance.designTheme, "lost-starship");
+  assert.equal(migratedConflictingV1.appearance.colorMode, "light");
+  assert.equal(migratedConflictingV1.appearance.customTheme.accent, "#abcdef");
+  assert.deepEqual(migratedConflictingV1.appearance.customTheme.futureToken, { keep: true });
+  assert.deepEqual(migratedConflictingV1.appearance.futureAppearance, { keep: "legacy" });
+  assert.deepEqual(migratedConflictingV1.futureFeature, { keep: "root" });
+  assert.equal(JSON.stringify(conflictingV1), conflictingV1Json);
+
   const unrelatedData = {
     categories: [{ id: "future-category", payload: { keep: true } }],
     futureFeature: { enabled: true, values: [1, 2, 3] }

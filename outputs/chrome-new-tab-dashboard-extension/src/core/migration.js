@@ -106,6 +106,7 @@ function normalizeCustomTheme(customTheme, appearance) {
 
 function normalizeClonedState(source) {
   const appearance = isRecord(source.appearance) ? source.appearance : {};
+  const isSchemaV2 = Number(source.schemaVersion) === SCHEMA_VERSION;
   const legacyColorMode = normalizeChoice(
     appearance.theme,
     COLOR_MODES,
@@ -117,12 +118,12 @@ function normalizeClonedState(source) {
     schemaVersion: SCHEMA_VERSION,
     appearance: {
       ...appearance,
-      designTheme: normalizeChoice(
-        appearance.designTheme,
-        DESIGN_THEMES,
-        defaultAppearanceV2.designTheme
-      ),
-      colorMode: normalizeChoice(appearance.colorMode, COLOR_MODES, legacyColorMode),
+      designTheme: isSchemaV2
+        ? normalizeChoice(appearance.designTheme, DESIGN_THEMES, defaultAppearanceV2.designTheme)
+        : defaultAppearanceV2.designTheme,
+      colorMode: isSchemaV2
+        ? normalizeChoice(appearance.colorMode, COLOR_MODES, legacyColorMode)
+        : legacyColorMode,
       customTheme: normalizeCustomTheme(appearance.customTheme, appearance)
     }
   };
