@@ -122,6 +122,7 @@ let needsDataMigration = false;
 let backgroundStorageOptimizationScheduled = false;
 let pendingImportedPresetId = "";
 let presetImportResultState = null;
+let feedbackResolver = null;
 const CATEGORY_LONG_PRESS_MS = 500;
 const CATEGORY_DRAG_MOVE_PX = 7;
 const SHORTCUT_LONG_PRESS_MS = 500;
@@ -327,7 +328,17 @@ const els = {
   saveShortcutBtn: document.querySelector("#saveShortcutBtn"),
   footerStatus: document.querySelector("#footerStatus"),
   footerTheme: document.querySelector("#footerTheme"),
-  footerVersion: document.querySelector("#footerVersion")
+  footerVersion: document.querySelector("#footerVersion"),
+  feedbackDialog: document.querySelector("#feedbackDialog"),
+  feedbackDialogTitle: document.querySelector("#feedbackDialogTitle"),
+  feedbackDialogMessage: document.querySelector("#feedbackDialogMessage"),
+  feedbackInputWrap: document.querySelector("#feedbackInputWrap"),
+  feedbackInputLabel: document.querySelector("#feedbackInputLabel"),
+  feedbackInput: document.querySelector("#feedbackInput"),
+  feedbackCloseBtn: document.querySelector("#feedbackCloseBtn"),
+  feedbackCancelBtn: document.querySelector("#feedbackCancelBtn"),
+  feedbackConfirmBtn: document.querySelector("#feedbackConfirmBtn"),
+  toastRegion: document.querySelector("#toastRegion")
 };
 
 const translations = {
@@ -399,6 +410,11 @@ const translations = {
     railCustomize: "打开自定义",
     footerReady: "本地数据已就绪",
     footerTheme: "主题：{theme}",
+    confirmationTitle: "确认操作",
+    renameTitle: "重命名",
+    textInputLabel: "名称",
+    confirm: "确认",
+    operationComplete: "操作已完成",
     languageTitle: "语言",
     languageChinese: "简体中文",
     languageEnglish: "English",
@@ -575,6 +591,11 @@ const translations = {
     railCustomize: "Open Customize",
     footerReady: "Local data ready",
     footerTheme: "Theme: {theme}",
+    confirmationTitle: "Confirm Action",
+    renameTitle: "Rename",
+    textInputLabel: "Name",
+    confirm: "Confirm",
+    operationComplete: "Action completed",
     languageTitle: "Language",
     languageChinese: "简体中文",
     languageEnglish: "English",
@@ -1468,6 +1489,21 @@ function bindEvents() {
   els.closeResetAppearanceDialogBtn.addEventListener("click", closeResetAppearanceDialog);
   els.cancelResetAppearanceBtn.addEventListener("click", closeResetAppearanceDialog);
   els.confirmResetAppearanceBtn.addEventListener("click", resetAppearance);
+  els.feedbackCloseBtn.addEventListener("click", () => resolveFeedbackDialog(null));
+  els.feedbackCancelBtn.addEventListener("click", () => resolveFeedbackDialog(null));
+  els.feedbackConfirmBtn.addEventListener("click", () => {
+    resolveFeedbackDialog(els.feedbackInputWrap.hidden ? true : els.feedbackInput.value);
+  });
+  els.feedbackInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      resolveFeedbackDialog(els.feedbackInput.value);
+    }
+  });
+  els.feedbackDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    resolveFeedbackDialog(null);
+  });
   els.backgroundFileInput.addEventListener("change", onBackgroundFileChange);
   els.languageToggleBtn.addEventListener("click", toggleLocale);
   els.classicLanguageBtn.addEventListener("click", toggleLocale);
@@ -1709,6 +1745,11 @@ function applyI18n() {
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
   els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "0.5.0"}`;
+  els.feedbackCloseBtn.title = t("closeDialog");
+  els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
+  els.feedbackCancelBtn.textContent = t("cancel");
+  els.feedbackConfirmBtn.textContent = t("confirm");
+  els.feedbackInputLabel.textContent = t("textInputLabel");
   setLabelText(els.shortcutTitleInput, t("shortcutTitle"));
   setLabelText(els.shortcutUrlInput, t("shortcutUrl"));
   setLabelText(els.shortcutCategorySelect, t("shortcutCategory"));
@@ -1733,6 +1774,53 @@ function setRailButtonLabel(button, label) {
 function getDesignThemeLabel(themeId) {
   const theme = designThemes.find((item) => item.id === themeId) || designThemes[0];
   return t(theme.labelKey);
+}
+
+function openConfirmDialog(message, title = t("confirmationTitle")) {
+  return openFeedbackDialog({ title, message, input: false });
+}
+
+function openTextPrompt(message, initialValue = "", title = t("renameTitle")) {
+  return openFeedbackDialog({ title, message, input: true, initialValue });
+}
+
+function openFeedbackDialog({ title, message, input, initialValue = "" }) {
+  if (feedbackResolver) resolveFeedbackDialog(null);
+  els.feedbackDialogTitle.textContent = title;
+  els.feedbackDialogMessage.textContent = message;
+  els.feedbackInputWrap.hidden = !input;
+  els.feedbackInput.value = input ? String(initialValue) : "";
+  if (!els.feedbackDialog.open) els.feedbackDialog.showModal();
+
+  requestAnimationFrame(() => {
+    if (input) {
+      els.feedbackInput.focus();
+      els.feedbackInput.select();
+    } else {
+      els.feedbackConfirmBtn.focus();
+    }
+  });
+
+  return new Promise((resolve) => {
+    feedbackResolver = resolve;
+  });
+}
+
+function resolveFeedbackDialog(value) {
+  const resolve = feedbackResolver;
+  feedbackResolver = null;
+  if (els.feedbackDialog.open) els.feedbackDialog.close();
+  resolve?.(value);
+}
+
+function showToast(message, tone = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${tone}`;
+  toast.textContent = message;
+  els.toastRegion.replaceChildren(toast);
+  window.setTimeout(() => {
+    if (toast.isConnected) toast.remove();
+  }, 2800);
 }
 
 function setLabelText(control, text) {
@@ -2618,7 +2706,7 @@ async function deleteEditingSearchEngine() {
 async function deleteSearchEngine(engineId) {
   const engine = state.searchEngines.find((item) => item.id === engineId && !item.builtin);
   if (!engine) return;
-  if (!confirm(t("deleteSearchEngineConfirm", { name: engine.name }))) return;
+  if (!await openConfirmDialog(t("deleteSearchEngineConfirm", { name: engine.name }))) return;
   state.searchEngines = state.searchEngines.filter((item) => item.id !== engineId);
   if (state.activeSearchEngineId === engineId) {
     state.activeSearchEngineId = "google";
@@ -3004,7 +3092,7 @@ function isPlainObject(value) {
 
 async function saveCurrentAppearancePreset() {
   const defaultName = t("defaultPresetName", { number: state.appearancePresets.length + 1 });
-  const nameInput = prompt(t("presetNamePrompt"), defaultName);
+  const nameInput = await openTextPrompt(t("presetNamePrompt"), defaultName);
   if (nameInput === null) return;
 
   const preset = createAppearancePreset(normalizeAppearancePresetName(nameInput, state.appearancePresets.length));
@@ -3090,7 +3178,7 @@ async function applyAppearancePreset(presetId) {
 async function renameAppearancePreset(presetId) {
   const preset = state.appearancePresets.find((item) => item.id === presetId);
   if (!preset) return;
-  const nameInput = prompt(t("presetNamePrompt"), preset.name);
+  const nameInput = await openTextPrompt(t("presetNamePrompt"), preset.name);
   if (nameInput === null) return;
   preset.name = normalizeAppearancePresetName(nameInput, state.appearancePresets.indexOf(preset));
   preset.updatedAt = Date.now();
@@ -3101,7 +3189,7 @@ async function renameAppearancePreset(presetId) {
 async function deleteAppearancePreset(presetId) {
   const preset = state.appearancePresets.find((item) => item.id === presetId);
   if (!preset) return;
-  if (!confirm(t("deletePresetConfirm", { name: preset.name }))) return;
+  if (!await openConfirmDialog(t("deletePresetConfirm", { name: preset.name }))) return;
 
   state.appearancePresets = state.appearancePresets.filter((item) => item.id !== presetId);
   if (state.activeAppearancePresetId === presetId) {
@@ -3263,7 +3351,7 @@ async function onBackgroundFileChange(event) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
   if (files.some((file) => !file.type.startsWith("image/"))) {
-    alert(t("invalidBackground"));
+    showToast(t("invalidBackground"), "error");
     return;
   }
 
@@ -3289,7 +3377,7 @@ async function onBackgroundFileChange(event) {
     await writeData();
     render();
   } catch {
-    alert(t("invalidBackground"));
+    showToast(t("invalidBackground"), "error");
   } finally {
     els.backgroundFileInput.value = "";
   }
@@ -3645,7 +3733,7 @@ async function onDeleteCategory() {
     || state.categories[0];
   const hasShortcuts = state.shortcuts.some((shortcut) => shortcut.categoryId === id);
   if (hasShortcuts) {
-    const ok = confirm(t("deleteCategoryConfirm", {
+    const ok = await openConfirmDialog(t("deleteCategoryConfirm", {
       category: displayCategoryName(category),
       target: displayCategoryName(custom)
     }));
@@ -4104,7 +4192,7 @@ async function onDeleteShortcut() {
   const id = els.shortcutId.value;
   const shortcut = state.shortcuts.find((item) => item.id === id);
   if (!shortcut) return;
-  const ok = confirm(t("deleteShortcutConfirm", { title: shortcut.title }));
+  const ok = await openConfirmDialog(t("deleteShortcutConfirm", { title: shortcut.title }));
   if (!ok) return;
   state.shortcuts = state.shortcuts.filter((item) => item.id !== id);
   await writeData();

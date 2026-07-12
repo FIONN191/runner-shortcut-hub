@@ -1,0 +1,22 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "..");
+const extensionRoot = path.join(root, "outputs", "chrome-new-tab-dashboard-extension");
+const app = fs.readFileSync(path.join(extensionRoot, "app.js"), "utf8");
+const html = fs.readFileSync(path.join(extensionRoot, "newtab.html"), "utf8");
+const styles = fs.readFileSync(path.join(extensionRoot, "styles", "v2.css"), "utf8");
+
+assert.doesNotMatch(app, /\balert\s*\(/);
+assert.doesNotMatch(app, /\bconfirm\s*\(/);
+assert.doesNotMatch(app, /\bprompt\s*\(/);
+assert.match(app, /function openConfirmDialog\(/);
+assert.match(app, /function openTextPrompt\(/);
+assert.match(app, /function showToast\(/);
+assert.match(html, /id="feedbackDialog"/);
+assert.match(html, /id="toastRegion"/);
+assert.match(styles, /\.toast-region\s*\{/);
+assert.match(styles, /\.feedback-modal\s*\{/);
+
+console.log("Interaction v2 tests passed");

@@ -339,6 +339,26 @@
       </div>
     </dialog>
 
+    <dialog id="feedbackDialog" class="modal feedback-modal">
+      <div class="modal-head">
+        <div>
+          <span class="feedback-code">SYS.PROMPT / ACTION</span>
+          <h3 id="feedbackDialogTitle"></h3>
+        </div>
+        <button id="feedbackCloseBtn" class="icon-button" type="button">×</button>
+      </div>
+      <p id="feedbackDialogMessage" class="confirm-message"></p>
+      <label id="feedbackInputWrap" class="feedback-input-wrap" hidden>
+        <span id="feedbackInputLabel"></span>
+        <input id="feedbackInput" type="text" maxlength="80">
+      </label>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="feedbackCancelBtn" class="ghost-button" type="button"></button>
+        <button id="feedbackConfirmBtn" class="primary-button" type="button"></button>
+      </div>
+    </dialog>
+
     <dialog id="presetImportResultDialog" class="modal preset-import-result-modal">
       <div class="modal-head">
         <h3 id="presetImportResultTitle"></h3>
@@ -396,6 +416,8 @@
         </div>
       </form>
     </dialog>
+
+    <div id="toastRegion" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script src="app.js"></script>
   </body>
