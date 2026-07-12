@@ -281,6 +281,7 @@
               <button id="importAppearancePresetBtn" class="ghost-button" type="button"></button>
               <button id="saveAppearancePresetBtn" class="ghost-button" type="button"></button>
               <button id="updateAppearancePresetBtn" class="ghost-button" type="button"></button>
+              <button id="exportAppearancePresetBtn" class="ghost-button" type="button"></button>
             </div>
           </div>
           <div id="appearancePresetList" class="appearance-preset-list" role="list"></div>
@@ -315,6 +316,19 @@
             <input id="backgroundFileInput" type="file" accept="image/*" multiple hidden>
             <button id="uploadBackgroundBtn" class="ghost-button" type="button"></button>
             <button id="removeBackgroundBtn" class="ghost-button" type="button"></button>
+          </div>
+        </section>
+
+        <section class="customize-section data-transfer-section">
+          <div class="customize-section-heading">
+            <h4 id="dataTransferTitle"></h4>
+            <span class="section-code">LOCAL.DATA / 02</span>
+          </div>
+          <p id="dataTransferCopy" class="preview-copy"></p>
+          <input id="dataBackupFileInput" type="file" accept=".json,application/json" hidden>
+          <div class="data-transfer-actions">
+            <button id="exportDataBtn" class="ghost-button" type="button"></button>
+            <button id="importDataBtn" class="ghost-button" type="button"></button>
           </div>
         </section>
 

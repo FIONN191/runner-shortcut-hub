@@ -336,6 +336,19 @@ select:focus-visible {
   width: min(520px, calc(100vw - 32px));
 }
 
+.data-transfer-section {
+  background:
+    linear-gradient(90deg, rgb(var(--accent-rgb) / 5%) 1px, transparent 1px),
+    transparent;
+  background-size: 20px 20px;
+}
+
+.data-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .feedback-code {
   display: block;
   margin-bottom: 5px;

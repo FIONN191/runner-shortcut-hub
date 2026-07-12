@@ -11,6 +11,9 @@ const BACKGROUND_STORAGE_OPTIMIZE_THRESHOLD = 1200000;
 const APPEARANCE_PRESET_IMPORT_TYPE = "runner-shortcut-hub-appearance-preset";
 const APPEARANCE_PRESET_IMPORT_VERSION = 1;
 const APPEARANCE_PRESET_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const DATA_BACKUP_TYPE = "runner-shortcut-hub-data-backup";
+const DATA_BACKUP_VERSION = 2;
+const DATA_BACKUP_MAX_BYTES = 20 * 1024 * 1024;
 const IMPORTED_WALLPAPER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const IMPORTED_APPEARANCE_FIELDS = new Set([
   "designTheme",
@@ -254,6 +257,7 @@ const els = {
   importAppearancePresetBtn: document.querySelector("#importAppearancePresetBtn"),
   saveAppearancePresetBtn: document.querySelector("#saveAppearancePresetBtn"),
   updateAppearancePresetBtn: document.querySelector("#updateAppearancePresetBtn"),
+  exportAppearancePresetBtn: document.querySelector("#exportAppearancePresetBtn"),
   appearancePresetList: document.querySelector("#appearancePresetList"),
   presetImportResultDialog: document.querySelector("#presetImportResultDialog"),
   presetImportResultTitle: document.querySelector("#presetImportResultTitle"),
@@ -301,6 +305,11 @@ const els = {
   backgroundFileInput: document.querySelector("#backgroundFileInput"),
   uploadBackgroundBtn: document.querySelector("#uploadBackgroundBtn"),
   removeBackgroundBtn: document.querySelector("#removeBackgroundBtn"),
+  dataTransferTitle: document.querySelector("#dataTransferTitle"),
+  dataTransferCopy: document.querySelector("#dataTransferCopy"),
+  dataBackupFileInput: document.querySelector("#dataBackupFileInput"),
+  exportDataBtn: document.querySelector("#exportDataBtn"),
+  importDataBtn: document.querySelector("#importDataBtn"),
   resetAppearanceBtn: document.querySelector("#resetAppearanceBtn"),
   resetTitle: document.querySelector("#resetTitle"),
   resetDescription: document.querySelector("#resetDescription"),
@@ -440,6 +449,7 @@ const translations = {
     previewButton: "按钮",
     appearancePresets: "外观预设",
     importPreset: "导入预设",
+    exportPreset: "导出全部预设",
     savePreset: "保存为预设",
     updatePreset: "更新当前预设",
     noAppearancePresets: "暂无保存的预设",
@@ -464,6 +474,16 @@ const translations = {
     presetReadFailed: "文件读取失败",
     importFailed: "导入失败",
     storageWriteFailed: "无法保存导入的预设",
+    dataTransferTitle: "完整数据导入与导出",
+    dataTransferCopy: "备份或恢复网站、分类、排序、搜索引擎、历史记录和全部外观数据。导入前会要求确认。",
+    exportAllData: "导出完整备份",
+    importAllData: "导入完整备份",
+    dataExported: "完整数据备份已导出",
+    presetsExported: "外观预设已导出",
+    dataImportConfirm: "导入完整备份会替换当前的网站、分类、排序和设置。确定继续吗？",
+    dataImported: "完整数据已恢复",
+    invalidDataBackup: "无效的 Runner Shortcut Hub 数据备份",
+    dataBackupTooLarge: "数据备份超过 20 MB 限制",
     wallpaperTitle: "更换壁纸",
     backgroundOpacity: "背景不透明度",
     backgroundBlur: "高斯模糊",
@@ -621,6 +641,7 @@ const translations = {
     previewButton: "Button",
     appearancePresets: "Appearance Presets",
     importPreset: "IMPORT PRESET",
+    exportPreset: "EXPORT ALL",
     savePreset: "SAVE PRESET",
     updatePreset: "UPDATE CURRENT",
     noAppearancePresets: "NO SAVED PRESETS",
@@ -645,6 +666,16 @@ const translations = {
     presetReadFailed: "File read failed",
     importFailed: "Import failed",
     storageWriteFailed: "The imported presets could not be saved",
+    dataTransferTitle: "Complete Data Import / Export",
+    dataTransferCopy: "Back up or restore websites, categories, ordering, search engines, history, and all appearance data. Import requires confirmation.",
+    exportAllData: "EXPORT FULL BACKUP",
+    importAllData: "IMPORT FULL BACKUP",
+    dataExported: "Complete data backup exported",
+    presetsExported: "Appearance presets exported",
+    dataImportConfirm: "Importing a complete backup replaces current websites, categories, ordering, and settings. Continue?",
+    dataImported: "Complete data restored",
+    invalidDataBackup: "Invalid Runner Shortcut Hub data backup",
+    dataBackupTooLarge: "Data backup exceeds the 20 MB limit",
     wallpaperTitle: "WALLPAPER",
     backgroundOpacity: "BACKGROUND OPACITY",
     backgroundBlur: "GAUSSIAN BLUR",
@@ -1462,6 +1493,7 @@ function bindEvents() {
   els.appearancePresetFileInput.addEventListener("change", onPresetImportFileChange);
   els.saveAppearancePresetBtn.addEventListener("click", saveCurrentAppearancePreset);
   els.updateAppearancePresetBtn.addEventListener("click", updateActiveAppearancePreset);
+  els.exportAppearancePresetBtn.addEventListener("click", exportAppearancePresets);
   els.appearancePresetList.addEventListener("click", onAppearancePresetListClick);
   els.applyImportedPresetBtn.addEventListener("click", applyPendingImportedPreset);
   els.keepCurrentAppearanceBtn.addEventListener("click", closePresetImportResultDialog);
@@ -1505,6 +1537,12 @@ function bindEvents() {
     resolveFeedbackDialog(null);
   });
   els.backgroundFileInput.addEventListener("change", onBackgroundFileChange);
+  els.exportDataBtn.addEventListener("click", exportCompleteData);
+  els.importDataBtn.addEventListener("click", () => {
+    els.dataBackupFileInput.value = "";
+    els.dataBackupFileInput.click();
+  });
+  els.dataBackupFileInput.addEventListener("change", onDataBackupFileChange);
   els.languageToggleBtn.addEventListener("click", toggleLocale);
   els.classicLanguageBtn.addEventListener("click", toggleLocale);
   els.nativeHomeBtn.addEventListener("click", openNativeChromeHome);
@@ -1717,6 +1755,7 @@ function applyI18n() {
   els.importAppearancePresetBtn.textContent = t("importPreset");
   els.saveAppearancePresetBtn.textContent = t("savePreset");
   els.updateAppearancePresetBtn.textContent = t("updatePreset");
+  els.exportAppearancePresetBtn.textContent = t("exportPreset");
   els.keepCurrentAppearanceBtn.textContent = t("keepCurrent");
   els.applyImportedPresetBtn.textContent = t("applyNow");
   els.dismissPresetImportResultBtn.textContent = t("close");
@@ -1728,6 +1767,10 @@ function applyI18n() {
   els.panelBlurLabel.textContent = t("panelBlur");
   els.uploadBackgroundBtn.textContent = t("uploadBackground");
   els.removeBackgroundBtn.textContent = t("removeBackground");
+  els.dataTransferTitle.textContent = t("dataTransferTitle");
+  els.dataTransferCopy.textContent = t("dataTransferCopy");
+  els.exportDataBtn.textContent = t("exportAllData");
+  els.importDataBtn.textContent = t("importAllData");
   els.resetTitle.textContent = t("resetTitle");
   els.resetDescription.textContent = t("resetDescription");
   els.resetAppearanceBtn.textContent = t("resetAppearance");
@@ -2721,6 +2764,115 @@ function openPresetImportDialog() {
   els.appearancePresetFileInput.click();
 }
 
+function exportAppearancePresets() {
+  const currentAppearance = normalizeAppearance(state.appearance);
+  const presets = state.appearancePresets.length
+    ? state.appearancePresets.map((preset) => clone(preset))
+    : [{
+      id: "exported-current",
+      name: t("activePreset"),
+      appearance: compactAppearanceSnapshot(currentAppearance),
+      locale: state.locale,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }];
+  const envelope = {
+    type: APPEARANCE_PRESET_IMPORT_TYPE,
+    version: APPEARANCE_PRESET_IMPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    locale: state.locale,
+    activePresetId: state.activeAppearancePresetId,
+    presets,
+    backgrounds: currentAppearance.customBackgroundImages.map((background) => clone(background))
+  };
+  downloadJsonFile(`runner-appearance-presets-${dateStamp()}.json`, envelope);
+  showToast(t("presetsExported"));
+}
+
+function exportCompleteData() {
+  const envelope = {
+    type: DATA_BACKUP_TYPE,
+    version: DATA_BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: {
+      ...clone(state),
+      schemaVersion: 2
+    }
+  };
+  downloadJsonFile(`runner-shortcut-hub-backup-${dateStamp()}.json`, envelope);
+  showToast(t("dataExported"));
+}
+
+async function onDataBackupFileChange(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  try {
+    const parsed = await readDataBackupFile(file);
+    const candidate = validateAndNormalizeDataBackup(parsed);
+    const approved = await openConfirmDialog(t("dataImportConfirm"));
+    if (!approved) return;
+    await writeDataSnapshot(candidate);
+    state = candidate;
+    render();
+    writeUiPreferences(state);
+    showToast(t("dataImported"));
+  } catch (error) {
+    showToast(t(error?.messageKey || "importFailed"), "error");
+  }
+}
+
+async function readDataBackupFile(file) {
+  const isJsonFile = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
+  if (!isJsonFile || !file.size) throw presetImportError("invalidDataBackup");
+  if (file.size > DATA_BACKUP_MAX_BYTES) throw presetImportError("dataBackupTooLarge");
+  let text;
+  try {
+    text = await file.text();
+  } catch {
+    throw presetImportError("presetReadFailed");
+  }
+  if (!text.trim()) throw presetImportError("invalidDataBackup");
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw presetImportError("invalidDataBackup");
+  }
+}
+
+function validateAndNormalizeDataBackup(envelope) {
+  if (!isPlainObject(envelope) || envelope.type !== DATA_BACKUP_TYPE) {
+    throw presetImportError("invalidDataBackup");
+  }
+  if (Number(envelope.version) !== DATA_BACKUP_VERSION) {
+    throw presetImportError("unsupportedPresetVersion");
+  }
+  if (!isPlainObject(envelope.data)
+    || !Array.isArray(envelope.data.categories)
+    || !envelope.data.categories.length
+    || !Array.isArray(envelope.data.shortcuts)) {
+    throw presetImportError("invalidDataBackup");
+  }
+  const candidate = normalizeState(clone(envelope.data));
+  candidate.schemaVersion = 2;
+  return candidate;
+}
+
+function downloadJsonFile(filename, value) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function dateStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function onPresetImportFileChange(event) {
   const file = event.target.files?.[0];
   event.target.value = "";
@@ -2948,6 +3100,9 @@ function buildImportedAppearance(rawAppearance, currentAppearance, customBackgro
     || customBackgroundImages.find((item) => item.id === sourceCustomId)?.id
     || "";
   const candidate = {
+    designTheme: designThemes.some((item) => item.id === rawAppearance.designTheme)
+      ? rawAppearance.designTheme
+      : currentAppearance.designTheme,
     theme: appearanceModes.some((item) => item.id === rawAppearance.theme) ? rawAppearance.theme : currentAppearance.theme,
     background: availableBackgroundIds.has(rawAppearance.background) ? rawAppearance.background : currentAppearance.background,
     activeCustomBackgroundId: mappedCustomId,
