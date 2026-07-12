@@ -496,6 +496,25 @@ select:focus-visible {
     margin-left: 0;
   }
 
+  .sidebar {
+    overflow: hidden;
+  }
+
+  .category-list {
+    display: flex;
+    grid-template-columns: none;
+    padding-bottom: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .category-button {
+    min-width: 168px;
+    flex: 0 0 168px;
+    scroll-snap-align: start;
+  }
+
   .customize-modal {
     width: 100vw;
     max-height: 100dvh;

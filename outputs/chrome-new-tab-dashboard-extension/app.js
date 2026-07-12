@@ -1787,7 +1787,7 @@ function applyI18n() {
   setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "0.5.0"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.0.0"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");

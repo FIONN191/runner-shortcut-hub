@@ -16,6 +16,9 @@ Runner Shortcut Hub 是一个替代 Chrome 新标签页的分类快捷方式面�
 - 独立调整图标、卡片、面板和按钮圆角
 - 调整字体大小和卡片密度
 - 保存、更新、导入和应用外观预设
+- 失落星船、液态玻璃和自定义三套一级主题
+- 独立导出或导入完整网站、分类和外观数据
+- 统一的双语弹窗、Toast、键盘焦点与减少动效支持
 - 一键切换至 Chrome 原版新标签页样式
 
 ## 本地安装
@@ -53,9 +56,21 @@ Runner Shortcut Hub 是一个替代 Chrome 新标签页的分类快捷方式面�
 ```bash
 node tests/ui-settings.test.cjs
 node tests/preset-import.test.cjs tests/fixtures/appearance-backup.json
+node tests/migration-v2.test.cjs
+node tests/theme-v2.test.cjs
+node tests/interactions-v2.test.cjs
+node tests/data-backup-v2.test.cjs
 node --check outputs/chrome-new-tab-dashboard-extension/app.js
 ```
 
 ## 当前版本
 
-`0.5.0`
+`2.0.0`
+
+## 2.0.0 更新说明
+
+- 默认使用“失落星船”界面，并可实时切换“液态玻璃”和“自定义”主题
+- 新增左侧全局工具栏、底部系统状态栏和右侧自定义控制台
+- 外观预设会保存一级主题；旧版预设继续兼容
+- 新增完整数据备份与原子恢复，导入前不会修改现有数据
+- 保留旧版网站、分类、排序、图标、背景、搜索引擎和历史记录
