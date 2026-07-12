@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "locale": "en",
+  "mode": "runner",
+  "searchEngines": [
+    {
+      "id": "synthetic-search",
+      "name": "Synthetic Search",
+      "shortcut": "SYN",
+      "searchUrl": "https://search.example/?q={query}",
+      "builtin": false
+    }
+  ],
+  "activeSearchEngineId": "synthetic-search",
+  "appearance": {
+    "theme": "dark",
+    "background": "custom",
+    "customBackgroundImages": [
+      {
+        "id": "synthetic-background",
+        "name": "Synthetic Background",
+        "image": "data:image/png;base64,c3ludGhldGljLWJhY2tncm91bmQ=",
+        "accentColor": "#3478d4"
+      }
+    ],
+    "activeCustomBackgroundId": "synthetic-background",
+    "accentColor": "#3478d4",
+    "backgroundOpacity": 0.8,
+    "backgroundBlur": 4,
+    "panelOpacity": 0.7,
+    "panelBlur": 8,
+    "iconRadius": 14,
+    "iconRadiusUnit": "px",
+    "cardRadius": 6,
+    "panelRadius": 10,
+    "buttonRadius": 5,
+    "fontScale": 1.08,
+    "cardDensity": "compact",
+    "designTheme": "lost-starship",
+    "colorMode": "dark",
+    "customTheme": {
+      "backgroundPage": "#050505",
+      "backgroundPanel": "#0d100c",
+      "textPrimary": "#f4f5ef",
+      "textSecondary": "#969b8e",
+      "accent": "#3478d4",
+      "border": "rgba(215,255,0,.28)",
+      "cardRadius": 6,
+      "panelRadius": 10,
+      "cardGap": 12,
+      "contentWidth": 1680,
+      "cardColumns": "auto",
+      "cardSize": "medium",
+      "shadowStrength": 0,
+      "surfaceBlur": 8,
+      "surfaceOpacity": 0.7,
+      "motionIntensity": 1,
+      "fontScale": 1.08,
+      "density": "compact",
+      "showGrid": true,
+      "showNoise": true,
+      "showScanlines": true,
+      "wallpaperMask": 0.55
+    }
+  },
+  "appearancePresets": [
+    {
+      "id": "synthetic-preset",
+      "name": "Synthetic Preset",
+      "appearance": {
+        "theme": "light",
+        "background": "custom",
+        "activeCustomBackgroundId": "synthetic-background",
+        "accentColor": "#123456",
+        "backgroundOpacity": 0.65,
+        "backgroundBlur": 3,
+        "panelOpacity": 0.76,
+        "panelBlur": 6,
+        "iconRadius": 12,
+        "iconRadiusUnit": "px",
+        "cardRadius": 4,
+        "panelRadius": 8,
+        "buttonRadius": 3,
+        "fontScale": 0.96,
+        "cardDensity": "spacious"
+      },
+      "locale": "en",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000001000
+    }
+  ],
+  "activeAppearancePresetId": "synthetic-preset",
+  "commonShortcutsSeeded": true,
+  "searchHistory": [
+    "synthetic runner docs",
+    "synthetic launch checklist"
+  ],
+  "showSearchHistory": true,
+  "categories": [
+    {
+      "id": "synthetic-alpha",
+      "name": "Synthetic Alpha",
+      "icon": "SA",
+      "order": 1,
+      "useCount": 7
+    },
+    {
+      "id": "synthetic-beta",
+      "name": "Synthetic Beta",
+      "icon": "SB",
+      "order": 0,
+      "useCount": 3
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "synthetic-one",
+      "categoryId": "synthetic-alpha",
+      "title": "Synthetic One",
+      "url": "https://one.example/",
+      "color": "#112233",
+      "iconUrl": "data:image/png;base64,c3ludGhldGljLWljb24="
+    },
+    {
+      "id": "synthetic-two",
+      "categoryId": "synthetic-beta",
+      "title": "Synthetic Two",
+      "url": "https://two.example/",
+      "color": "#445566",
+      "iconUrl": ""
+    }
+  ],
+  "activeCategoryId": "synthetic-alpha"
+}

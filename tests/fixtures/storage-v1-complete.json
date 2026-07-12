@@ -1,0 +1,107 @@
+{
+  "locale": "en",
+  "mode": "runner",
+  "searchEngines": [
+    {
+      "id": "synthetic-search",
+      "name": "Synthetic Search",
+      "shortcut": "SYN",
+      "searchUrl": "https://search.example/?q={query}",
+      "builtin": false
+    }
+  ],
+  "activeSearchEngineId": "synthetic-search",
+  "appearance": {
+    "theme": "dark",
+    "background": "custom",
+    "customBackgroundImages": [
+      {
+        "id": "synthetic-background",
+        "name": "Synthetic Background",
+        "image": "data:image/png;base64,c3ludGhldGljLWJhY2tncm91bmQ=",
+        "accentColor": "#3478d4"
+      }
+    ],
+    "activeCustomBackgroundId": "synthetic-background",
+    "accentColor": "#3478d4",
+    "backgroundOpacity": 0.8,
+    "backgroundBlur": 4,
+    "panelOpacity": 0.7,
+    "panelBlur": 8,
+    "iconRadius": 14,
+    "iconRadiusUnit": "px",
+    "cardRadius": 6,
+    "panelRadius": 10,
+    "buttonRadius": 5,
+    "fontScale": 1.08,
+    "cardDensity": "compact"
+  },
+  "appearancePresets": [
+    {
+      "id": "synthetic-preset",
+      "name": "Synthetic Preset",
+      "appearance": {
+        "theme": "light",
+        "background": "custom",
+        "activeCustomBackgroundId": "synthetic-background",
+        "accentColor": "#123456",
+        "backgroundOpacity": 0.65,
+        "backgroundBlur": 3,
+        "panelOpacity": 0.76,
+        "panelBlur": 6,
+        "iconRadius": 12,
+        "iconRadiusUnit": "px",
+        "cardRadius": 4,
+        "panelRadius": 8,
+        "buttonRadius": 3,
+        "fontScale": 0.96,
+        "cardDensity": "spacious"
+      },
+      "locale": "en",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000001000
+    }
+  ],
+  "activeAppearancePresetId": "synthetic-preset",
+  "commonShortcutsSeeded": true,
+  "searchHistory": [
+    "synthetic runner docs",
+    "synthetic launch checklist"
+  ],
+  "showSearchHistory": true,
+  "categories": [
+    {
+      "id": "synthetic-alpha",
+      "name": "Synthetic Alpha",
+      "icon": "SA",
+      "order": 1,
+      "useCount": 7
+    },
+    {
+      "id": "synthetic-beta",
+      "name": "Synthetic Beta",
+      "icon": "SB",
+      "order": 0,
+      "useCount": 3
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "synthetic-one",
+      "categoryId": "synthetic-alpha",
+      "title": "Synthetic One",
+      "url": "https://one.example/",
+      "color": "#112233",
+      "iconUrl": "data:image/png;base64,c3ludGhldGljLWljb24="
+    },
+    {
+      "id": "synthetic-two",
+      "categoryId": "synthetic-beta",
+      "title": "Synthetic Two",
+      "url": "https://two.example/",
+      "color": "#445566",
+      "iconUrl": ""
+    }
+  ],
+  "activeCategoryId": "synthetic-alpha"
+}
