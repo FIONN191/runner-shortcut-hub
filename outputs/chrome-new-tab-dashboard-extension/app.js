@@ -410,9 +410,11 @@ const translations = {
     designThemeLostStarship: "失落星船",
     designThemeLiquidGlass: "液态玻璃",
     designThemeCustom: "自定义",
+    designThemeMinimal: "简洁模式",
     designThemeLostStarshipCopy: "工业网格、酸性高亮与系统数据界面",
     designThemeLiquidGlassCopy: "通透层次、柔和景深与流动高光",
     designThemeCustomCopy: "使用你的主题色、圆角和壁纸组合",
+    designThemeMinimalCopy: "严格灰度、纯色剪影与无干扰界面",
     railHome: "主页",
     railSearch: "聚焦搜索",
     railCategories: "分类导航",
@@ -602,9 +604,11 @@ const translations = {
     designThemeLostStarship: "Lost Starship",
     designThemeLiquidGlass: "Liquid Glass",
     designThemeCustom: "Custom",
+    designThemeMinimal: "Minimal",
     designThemeLostStarshipCopy: "Industrial grid, acid highlights, and system data",
     designThemeLiquidGlassCopy: "Translucent depth, soft focus, and fluid light",
     designThemeCustomCopy: "Use your color, radius, and wallpaper settings",
+    designThemeMinimalCopy: "Strict grayscale, solid silhouettes, and distraction-free surfaces",
     railHome: "Home",
     railSearch: "Focus Search",
     railCategories: "Category Navigation",
@@ -807,6 +811,12 @@ const designThemes = [
     labelKey: "designThemeCustom",
     copyKey: "designThemeCustomCopy",
     code: "CU-03"
+  },
+  {
+    id: "minimal",
+    labelKey: "designThemeMinimal",
+    copyKey: "designThemeMinimalCopy",
+    code: "MN-04"
   }
 ];
 
@@ -1902,6 +1912,10 @@ function applyAppearance() {
   } else {
     document.body.style.removeProperty("--custom-background-image");
   }
+
+  if (appearance.designTheme === "minimal") {
+    classifyRenderedMonochromeIcons();
+  }
 }
 
 function applyPanelVariables(appearance, resolvedTheme) {
@@ -2445,11 +2459,12 @@ function paintCategoryIcon(container, category) {
     const img = document.createElement("img");
     img.alt = "";
     img.decoding = "async";
-    img.src = category.iconImage;
+    prepareMonochromeIcon(img);
     img.addEventListener("error", () => {
       category.iconImage = "";
       paintCategoryIcon(container, category);
     });
+    img.src = category.iconImage;
     container.append(img);
     return;
   }
@@ -2593,18 +2608,116 @@ function paintShortcutIcon(container, shortcut) {
   img.draggable = false;
   img.referrerPolicy = "no-referrer";
   img.dataset.candidateIndex = "0";
-  img.src = candidates[0];
+  prepareMonochromeIcon(img);
   img.addEventListener("error", () => {
     const nextIndex = Number(img.dataset.candidateIndex) + 1;
     if (nextIndex < candidates.length) {
       img.dataset.candidateIndex = String(nextIndex);
+      clearMonochromeIconClass(img);
       img.src = candidates[nextIndex];
       return;
     }
     container.classList.add("icon-fallback");
   });
+  img.src = candidates[0];
 
   container.replaceChildren(img, fallback);
+}
+
+const monochromeIconClasses = [
+  "icon-silhouette-alpha",
+  "icon-silhouette-opaque-dark",
+  "icon-silhouette-opaque-light",
+  "icon-silhouette-fallback"
+];
+
+function clearMonochromeIconClass(img) {
+  img.classList.remove(...monochromeIconClasses);
+  delete img.dataset.silhouetteSource;
+}
+
+function prepareMonochromeIcon(img) {
+  img.addEventListener("load", () => {
+    if (document.documentElement.dataset.theme === "minimal") {
+      classifyMonochromeIcon(img);
+    }
+  });
+}
+
+function classifyRenderedMonochromeIcons() {
+  document.querySelectorAll(".shortcut-icon img, .category-icon img").forEach((img) => {
+    if (img.complete && img.naturalWidth > 0) classifyMonochromeIcon(img);
+  });
+}
+
+function classifyMonochromeIcon(img) {
+  const source = img.currentSrc || img.src;
+  if (
+    img.dataset.silhouetteSource === source
+    && monochromeIconClasses.some((className) => img.classList.contains(className))
+  ) {
+    return;
+  }
+
+  clearMonochromeIconClass(img);
+  try {
+    const size = 32;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Canvas unavailable");
+    context.drawImage(img, 0, 0, size, size);
+    const pixels = context.getImageData(0, 0, size, size).data;
+    img.classList.add(`icon-silhouette-${classifyIconPixels(pixels, size, size)}`);
+  } catch {
+    img.classList.add("icon-silhouette-fallback");
+  }
+  img.dataset.silhouetteSource = source;
+}
+
+function classifyIconPixels(pixels, width, height) {
+  const pixelCount = Math.max(1, width * height);
+  let transparentPixels = 0;
+
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 245) transparentPixels += 1;
+  }
+
+  if (transparentPixels / pixelCount >= 0.15) return "alpha";
+
+  const patchWidth = Math.max(1, Math.floor(width * 0.2));
+  const patchHeight = Math.max(1, Math.floor(height * 0.2));
+  const cornerStarts = [
+    [0, 0],
+    [width - patchWidth, 0],
+    [0, height - patchHeight],
+    [width - patchWidth, height - patchHeight]
+  ];
+  let luminanceTotal = 0;
+  let sampleCount = 0;
+
+  cornerStarts.forEach(([startX, startY]) => {
+    for (let y = startY; y < startY + patchHeight; y += 1) {
+      for (let x = startX; x < startX + patchWidth; x += 1) {
+        const index = (y * width + x) * 4;
+        if (pixels[index + 3] >= 245) {
+          luminanceTotal += pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+          sampleCount += 1;
+        }
+      }
+    }
+  });
+
+  if (!sampleCount) {
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] < 245) continue;
+      luminanceTotal += pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+      sampleCount += 1;
+    }
+  }
+
+  return luminanceTotal / Math.max(1, sampleCount) >= 150 ? "opaque-light" : "opaque-dark";
 }
 
 function iconCandidates(url, savedIconUrl = "") {
