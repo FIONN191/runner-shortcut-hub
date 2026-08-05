@@ -208,7 +208,8 @@
           title: bookmark.title,
           url: bookmark.url,
           color: colorForUrl(bookmark.url),
-          iconUrl: ""
+          iconUrl: "",
+          useCount: 0
         });
         stats.imported += 1;
       });

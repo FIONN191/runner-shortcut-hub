@@ -74,6 +74,7 @@ const defaultData = {
   commonShortcutsSeeded: true,
   searchHistory: [],
   showSearchHistory: true,
+  sortShortcutsByUsage: false,
   categories: [
     { id: "ai-tools", name: "AI 工具", icon: "AI", order: 0, useCount: 0 },
     { id: "social", name: "社媒平台", icon: "社", order: 1, useCount: 0 },
@@ -289,6 +290,10 @@ const els = {
   fontScaleValue: document.querySelector("#fontScaleValue"),
   cardDensityLabel: document.querySelector("#cardDensityLabel"),
   cardDensityOptions: document.querySelector("#cardDensityOptions"),
+  shortcutSettingsTitle: document.querySelector("#shortcutSettingsTitle"),
+  sortShortcutsByUsageLabel: document.querySelector("#sortShortcutsByUsageLabel"),
+  sortShortcutsByUsageDescription: document.querySelector("#sortShortcutsByUsageDescription"),
+  sortShortcutsByUsageInput: document.querySelector("#sortShortcutsByUsageInput"),
   shapePreviewCardLabel: document.querySelector("#shapePreviewCardLabel"),
   shapePreviewButton: document.querySelector("#shapePreviewButton"),
   wallpaperTitle: document.querySelector("#wallpaperTitle"),
@@ -457,6 +462,10 @@ const translations = {
     buttonRadius: "按钮圆角",
     fontScale: "字体大小",
     cardDensity: "卡片密度",
+    shortcutSettings: "快捷方式",
+    sortShortcutsByUsage: "按使用频次排序",
+    sortShortcutsByUsageDescription: "开启后，常用网站会优先显示；关闭后恢复手动排序。",
+    shortcutUsageSortActiveHint: "当前按使用频次排序，关闭后可拖动调整位置。",
     densityCompact: "紧凑",
     densityComfortable: "标准",
     densitySpacious: "宽松",
@@ -673,6 +682,10 @@ const translations = {
     buttonRadius: "Button Radius",
     fontScale: "Font Size",
     cardDensity: "Card Density",
+    shortcutSettings: "Shortcuts",
+    sortShortcutsByUsage: "Sort by Usage",
+    sortShortcutsByUsageDescription: "Frequently used websites appear first. Turn it off to restore manual order.",
+    shortcutUsageSortActiveHint: "Usage sorting is active. Turn it off to drag and reorder shortcuts.",
     densityCompact: "Compact",
     densityComfortable: "Comfortable",
     densitySpacious: "Spacious",
@@ -1124,6 +1137,7 @@ function normalizeState(data) {
     : "";
   const searchHistory = normalizeSearchHistory(data.searchHistory);
   const showSearchHistory = data.showSearchHistory !== false;
+  const sortShortcutsByUsage = data.sortShortcutsByUsage === true;
   const categories = data.categories
     .filter((category) => category.id && category.name)
     .map((category, index) => normalizeCategory(category, index));
@@ -1142,7 +1156,8 @@ function normalizeState(data) {
       ...shortcut,
       categoryId: categoryIds.has(shortcut.categoryId) ? shortcut.categoryId : "custom",
       color: shortcut.color || "#62d5ff",
-      iconUrl: shortcut.iconUrl || ""
+      iconUrl: shortcut.iconUrl || "",
+      useCount: normalizeUseCount(shortcut.useCount)
     }));
   const commonShortcutsSeeded = data.commonShortcutsSeeded === true;
   if (!commonShortcutsSeeded && shortcuts.filter((shortcut) => shortcut.categoryId === common.id).length === 0) {
@@ -1163,6 +1178,7 @@ function normalizeState(data) {
     commonShortcutsSeeded: true,
     searchHistory,
     showSearchHistory,
+    sortShortcutsByUsage,
     categories,
     shortcuts,
     activeCategoryId
@@ -1583,6 +1599,7 @@ function bindEvents() {
   els.buttonRadiusInput.addEventListener("input", onButtonRadiusInput);
   els.fontScaleInput.addEventListener("input", onFontScaleInput);
   els.cardDensityOptions.addEventListener("click", onCardDensityOptionClick);
+  els.sortShortcutsByUsageInput.addEventListener("change", onSortShortcutsByUsageChange);
   els.uploadBackgroundBtn.addEventListener("click", () => els.backgroundFileInput.click());
   els.removeBackgroundBtn.addEventListener("click", removeCustomBackground);
   els.resetAppearanceBtn.addEventListener("click", openResetAppearanceDialog);
@@ -1705,7 +1722,7 @@ function bindEvents() {
     if (card) {
       const shortcut = state.shortcuts.find((item) => item.id === card.dataset.shortcutId);
       if (shortcut) {
-        await recordCategoryUse(shortcut.categoryId);
+        await recordShortcutUse(shortcut.id);
       }
       window.location.href = card.dataset.openUrl;
     }
@@ -1830,6 +1847,10 @@ function applyI18n() {
   els.buttonRadiusLabel.textContent = t("buttonRadius");
   els.fontScaleLabel.textContent = t("fontScale");
   els.cardDensityLabel.textContent = t("cardDensity");
+  els.shortcutSettingsTitle.textContent = t("shortcutSettings");
+  els.sortShortcutsByUsageLabel.textContent = t("sortShortcutsByUsage");
+  els.sortShortcutsByUsageDescription.textContent = t("sortShortcutsByUsageDescription");
+  els.sortShortcutsByUsageInput.setAttribute("aria-label", t("sortShortcutsByUsage"));
   els.shapePreviewCardLabel.textContent = t("previewCard");
   els.shapePreviewButton.textContent = t("previewButton");
   els.appearancePresetTitle.textContent = t("appearancePresets");
@@ -1869,7 +1890,7 @@ function applyI18n() {
   setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.1.1"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.0"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");
@@ -2039,6 +2060,7 @@ function renderCustomizerControls() {
   renderAppearanceOptions();
   renderThemeColorOptions();
   renderShapeControls();
+  els.sortShortcutsByUsageInput.checked = state.sortShortcutsByUsage === true;
   renderAppearancePresetControls();
   renderBackgroundOptions();
   renderBackgroundTuningControls();
@@ -2583,13 +2605,13 @@ function sortCategoriesByUsage() {
 }
 
 function renderShortcuts() {
-  const shortcuts = state.shortcuts.filter((shortcut) => shortcut.categoryId === state.activeCategoryId);
+  const shortcuts = shortcutsForDisplay(state.activeCategoryId);
   els.emptyState.hidden = shortcuts.length > 0;
   els.shortcutGrid.replaceChildren(...shortcuts.map(createShortcutCard));
 }
 
 function renderClassicShortcuts() {
-  els.classicShortcutGrid.replaceChildren(...state.shortcuts.map(createClassicShortcut));
+  els.classicShortcutGrid.replaceChildren(...shortcutsForDisplay().map(createClassicShortcut));
 }
 
 function createClassicShortcut(shortcut) {
@@ -2597,7 +2619,7 @@ function createClassicShortcut(shortcut) {
   button.type = "button";
   button.className = "classic-shortcut";
   button.addEventListener("click", async () => {
-    await recordCategoryUse(shortcut.categoryId);
+    await recordShortcutUse(shortcut.id);
     window.location.href = shortcut.url;
   });
 
@@ -2621,14 +2643,14 @@ function createShortcutCard(shortcut) {
   card.setAttribute("role", "link");
   card.addEventListener("keydown", async (event) => {
     if (event.key === "Enter") {
-      await recordCategoryUse(shortcut.categoryId);
+      await recordShortcutUse(shortcut.id);
       window.location.href = shortcut.url;
     }
   });
 
   const icon = document.createElement("div");
   paintShortcutIcon(icon, shortcut);
-  icon.title = t("shortcutDragHint");
+  icon.title = t(state.sortShortcutsByUsage ? "shortcutUsageSortActiveHint" : "shortcutDragHint");
 
   const title = document.createElement("p");
   title.className = "shortcut-title";
@@ -3998,6 +4020,41 @@ async function recordCategoryUse(categoryId, shouldWrite = true) {
   }
 }
 
+function normalizeUseCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
+function shortcutsForDisplay(categoryId = "") {
+  const shortcuts = state.shortcuts
+    .map((shortcut, manualIndex) => ({ shortcut, manualIndex }))
+    .filter(({ shortcut }) => !categoryId || shortcut.categoryId === categoryId);
+
+  if (state.sortShortcutsByUsage) {
+    shortcuts.sort((left, right) => (
+      normalizeUseCount(right.shortcut.useCount) - normalizeUseCount(left.shortcut.useCount)
+      || left.manualIndex - right.manualIndex
+    ));
+  }
+
+  return shortcuts.map(({ shortcut }) => shortcut);
+}
+
+async function recordShortcutUse(shortcutId) {
+  const shortcut = state.shortcuts.find((item) => item.id === shortcutId);
+  if (!shortcut) return;
+  shortcut.useCount = normalizeUseCount(shortcut.useCount) + 1;
+  await recordCategoryUse(shortcut.categoryId, false);
+  await writeData();
+}
+
+async function onSortShortcutsByUsageChange(event) {
+  state.sortShortcutsByUsage = event.currentTarget.checked;
+  await writeData();
+  renderShortcuts();
+  if (state.mode === "classic") renderClassicShortcuts();
+}
+
 async function toggleLocale() {
   await setLocale(state.locale === "en" ? "zh-CN" : "en");
 }
@@ -4486,6 +4543,7 @@ function releaseCategoryClickSuppression() {
 }
 
 function onShortcutPointerDown(event) {
+  if (state.sortShortcutsByUsage) return;
   if (event.button !== 0) return;
   const handle = event.target.closest(".shortcut-icon");
   if (!handle || !els.shortcutGrid.contains(handle)) return;
@@ -4692,7 +4750,7 @@ async function onShortcutSubmit(event) {
     const shortcut = state.shortcuts.find((item) => item.id === id);
     if (shortcut) Object.assign(shortcut, { title, url, categoryId, color, iconUrl: "" });
   } else {
-    state.shortcuts.push({ id: createId(title), title, url, categoryId, color, iconUrl: "" });
+    state.shortcuts.push({ id: createId(title), title, url, categoryId, color, iconUrl: "", useCount: 0 });
     state.activeCategoryId = categoryId;
   }
 

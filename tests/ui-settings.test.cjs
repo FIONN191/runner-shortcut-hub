@@ -81,6 +81,9 @@ globalThis.__uiTestApi = {
   applyAppearance,
   createAppearancePreset,
   categoryIcon,
+  normalizeState,
+  shortcutsForDisplay,
+  recordShortcutUse,
   resetAppearance,
   getState: () => clone(state),
   setState: (value) => { state = clone(value); },
@@ -104,6 +107,7 @@ function nonAppearanceSnapshot(state) {
     activeSearchEngineId: state.activeSearchEngineId,
     searchHistory: state.searchHistory,
     showSearchHistory: state.showSearchHistory,
+    sortShortcutsByUsage: state.sortShortcutsByUsage,
     categories: state.categories,
     shortcuts: state.shortcuts,
     activeCategoryId: state.activeCategoryId
@@ -113,11 +117,14 @@ function nonAppearanceSnapshot(state) {
 (async () => {
   const defaults = api.getDefaultState();
   assert.equal(defaults.locale, "zh-CN");
+  assert.equal(defaults.sortShortcutsByUsage, false);
   assert.equal(api.normalizeLocale("zh"), "zh-CN");
   assert.equal(api.normalizeLocale("zhCN"), "zh-CN");
   assert.equal(api.normalizeLocale("en"), "en");
   assert.equal(api.translate("zh-CN", "customize"), "自定义");
   assert.equal(api.translate("en", "customize"), "Customize");
+  assert.equal(api.translate("zh-CN", "sortShortcutsByUsage"), "按使用频次排序");
+  assert.equal(api.translate("en", "sortShortcutsByUsage"), "Sort by Usage");
   api.translate("zh-CN", "customize");
   assert.equal(api.categoryIcon({ id: "video", name: "视频创作", icon: "影" }), "影");
   api.translate("en", "customize");
@@ -132,6 +139,33 @@ function nonAppearanceSnapshot(state) {
     assert.ok(Object.hasOwn(api.translations["zh-CN"], key), `Missing zh-CN translation: ${key}`);
     assert.ok(Object.hasOwn(api.translations.en, key), `Missing English translation: ${key}`);
   });
+
+  const usageState = clone(defaults);
+  usageState.activeCategoryId = "ai-tools";
+  usageState.shortcuts = [
+    { id: "manual-first", categoryId: "ai-tools", title: "First", url: "https://first.example", useCount: 1 },
+    { id: "popular-first", categoryId: "ai-tools", title: "Popular A", url: "https://a.example", useCount: 8 },
+    { id: "popular-second", categoryId: "ai-tools", title: "Popular B", url: "https://b.example", useCount: 8 }
+  ];
+  usageState.sortShortcutsByUsage = false;
+  api.setState(api.normalizeState(usageState));
+  assert.deepEqual(
+    Array.from(api.shortcutsForDisplay("ai-tools"), (shortcut) => shortcut.id),
+    ["manual-first", "popular-first", "popular-second"],
+    "manual order should be retained while usage sorting is disabled"
+  );
+
+  usageState.sortShortcutsByUsage = true;
+  api.setState(api.normalizeState(usageState));
+  assert.deepEqual(
+    Array.from(api.shortcutsForDisplay("ai-tools"), (shortcut) => shortcut.id),
+    ["popular-first", "popular-second", "manual-first"],
+    "usage sorting should be descending and stable for ties"
+  );
+  await api.recordShortcutUse("manual-first");
+  const incrementedState = api.getState();
+  assert.equal(incrementedState.shortcuts.find((shortcut) => shortcut.id === "manual-first").useCount, 2);
+  assert.equal(context.__lastSnapshot.sortShortcutsByUsage, true);
 
   const normalizedCircle = api.normalizeAppearance({
     ...defaults.appearance,
