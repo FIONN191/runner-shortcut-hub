@@ -34,8 +34,15 @@ html[data-theme="liquid-glass"] .modal {
   border-color: var(--border-default);
   background: var(--background-panel);
   box-shadow: var(--surface-shadow);
-  backdrop-filter: var(--surface-backdrop);
-  -webkit-backdrop-filter: var(--surface-backdrop);
+}
+
+html[data-theme="liquid-glass"] body.has-panel-blur .brand,
+html[data-theme="liquid-glass"] body.has-panel-blur .search,
+html[data-theme="liquid-glass"] body.has-panel-blur .system-panel,
+html[data-theme="liquid-glass"] body.has-panel-blur .workspace,
+html[data-theme="liquid-glass"] body.has-panel-blur .modal {
+  backdrop-filter: blur(var(--panel-blur)) saturate(1.16);
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.16);
 }
 
 html[data-theme="liquid-glass"] .shortcut-card {

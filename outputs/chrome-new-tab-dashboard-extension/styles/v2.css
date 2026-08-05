@@ -66,7 +66,6 @@ body[data-color-mode="light"] {
   gap: 8px;
   background: var(--background-panel);
   box-shadow: var(--surface-shadow);
-  backdrop-filter: var(--surface-backdrop);
   transform: translateY(-50%);
 }
 
@@ -102,20 +101,6 @@ body[data-color-mode="light"] {
   flex: 1 1 auto;
   border-left: 1px solid var(--border-default);
   margin-left: 20px;
-}
-
-.topbar,
-.workspace,
-.system-footer {
-  animation: runner-enter var(--duration-scene) var(--ease-ui) both;
-}
-
-.workspace {
-  animation-delay: 70ms;
-}
-
-.system-footer {
-  animation-delay: 120ms;
 }
 
 .system-footer {
@@ -187,13 +172,8 @@ select:focus-visible {
   transform: translateX(0);
 }
 
-.customize-modal[open] {
-  animation: customize-enter var(--duration-slow) var(--ease-ui) both;
-}
-
 .customize-modal::backdrop {
   background: rgb(0 0 0 / 62%);
-  backdrop-filter: blur(4px);
 }
 
 .customize-modal > .modal-head {
@@ -287,7 +267,6 @@ select:focus-visible {
 
 .theme-liquid-glass .theme-visual-grid {
   background: linear-gradient(115deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 22%), rgb(255 255 255 / 5%));
-  backdrop-filter: blur(12px);
 }
 
 .theme-custom {

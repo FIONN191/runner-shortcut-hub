@@ -126,6 +126,9 @@ let backgroundStorageOptimizationScheduled = false;
 let pendingImportedPresetId = "";
 let presetImportResultState = null;
 let feedbackResolver = null;
+let bookmarkImportGroups = [];
+let bookmarkImportSelectedIds = new Set();
+let bookmarkImportBusy = false;
 const CATEGORY_LONG_PRESS_MS = 500;
 const CATEGORY_DRAG_MOVE_PX = 7;
 const SHORTCUT_LONG_PRESS_MS = 500;
@@ -308,6 +311,7 @@ const els = {
   dataTransferTitle: document.querySelector("#dataTransferTitle"),
   dataTransferCopy: document.querySelector("#dataTransferCopy"),
   dataBackupFileInput: document.querySelector("#dataBackupFileInput"),
+  importBookmarksBtn: document.querySelector("#importBookmarksBtn"),
   exportDataBtn: document.querySelector("#exportDataBtn"),
   importDataBtn: document.querySelector("#importDataBtn"),
   resetAppearanceBtn: document.querySelector("#resetAppearanceBtn"),
@@ -347,6 +351,16 @@ const els = {
   feedbackCloseBtn: document.querySelector("#feedbackCloseBtn"),
   feedbackCancelBtn: document.querySelector("#feedbackCancelBtn"),
   feedbackConfirmBtn: document.querySelector("#feedbackConfirmBtn"),
+  bookmarkImportDialog: document.querySelector("#bookmarkImportDialog"),
+  bookmarkImportTitle: document.querySelector("#bookmarkImportTitle"),
+  bookmarkImportCopy: document.querySelector("#bookmarkImportCopy"),
+  bookmarkImportSummary: document.querySelector("#bookmarkImportSummary"),
+  bookmarkImportList: document.querySelector("#bookmarkImportList"),
+  bookmarkImportError: document.querySelector("#bookmarkImportError"),
+  toggleAllBookmarkGroupsBtn: document.querySelector("#toggleAllBookmarkGroupsBtn"),
+  closeBookmarkImportBtn: document.querySelector("#closeBookmarkImportBtn"),
+  cancelBookmarkImportBtn: document.querySelector("#cancelBookmarkImportBtn"),
+  confirmBookmarkImportBtn: document.querySelector("#confirmBookmarkImportBtn"),
   toastRegion: document.querySelector("#toastRegion")
 };
 
@@ -403,7 +417,11 @@ const translations = {
     urlLabel: "URL",
     signal: "网站",
     clusters: "分类",
-    nativeHome: "Chrome 原版",
+    nativeHome: "关闭插件",
+    disableExtensionTitle: "关闭 Runner Shortcut Hub",
+    disableExtensionConfirm: "关闭后将立即恢复 Chrome 原生新标签页。需要重新开启时，请进入 chrome://extensions。确定关闭吗？",
+    disableExtensionFailed: "无法关闭插件，请在 chrome://extensions 中手动关闭。",
+    disableExtensionUnavailable: "当前环境不支持直接关闭插件。",
     customize: "自定义",
     customizeTitle: "自定义",
     designThemeTitle: "界面主题",
@@ -478,6 +496,24 @@ const translations = {
     storageWriteFailed: "无法保存导入的预设",
     dataTransferTitle: "完整数据导入与导出",
     dataTransferCopy: "备份或恢复网站、分类、排序、搜索引擎、历史记录和全部外观数据。导入前会要求确认。",
+    importChromeBookmarks: "从 Chrome 书签导入",
+    bookmarkImportTitle: "导入 Chrome 书签",
+    bookmarkImportCopy: "书签栏一级文件夹会成为分类，子文件夹中的网站将递归导入。此操作只读取书签，不会修改或删除书签。",
+    bookmarkImportReading: "正在读取 Chrome 书签…",
+    bookmarksBar: "书签栏",
+    bookmarkImportGroupCount: "{count} 个网站",
+    bookmarkImportSummary: "已选择 {groups} 个分类，共 {sites} 个有效网站",
+    bookmarkImportSelectAll: "全选",
+    bookmarkImportClearAll: "取消全选",
+    bookmarkImportAction: "导入所选",
+    bookmarkImporting: "正在导入…",
+    bookmarkImportEmpty: "书签栏中没有可导入的网站。",
+    bookmarkImportBarMissing: "未找到可导入的 Chrome 书签栏。",
+    bookmarkImportReadFailed: "无法读取 Chrome 书签。请检查扩展权限后重试。",
+    bookmarkImportUnavailable: "当前环境不支持读取 Chrome 书签。",
+    bookmarkImportResult: "导入完成：新增 {categories} 个分类、{imported} 个网站；跳过 {duplicates} 个重复网址和 {invalid} 个无效网址。",
+    bookmarkImportNoChanges: "没有新增网站；重复或无效网址已跳过。",
+    bookmarkImportStorageFailed: "导入失败，现有数据未修改。",
     exportAllData: "导出完整备份",
     importAllData: "导入完整备份",
     dataExported: "完整数据备份已导出",
@@ -597,7 +633,11 @@ const translations = {
     urlLabel: "URL",
     signal: "WEBSITES",
     clusters: "CATEGORIES",
-    nativeHome: "Chrome Original",
+    nativeHome: "Disable Extension",
+    disableExtensionTitle: "Disable Runner Shortcut Hub",
+    disableExtensionConfirm: "Disabling the extension immediately restores Chrome's original New Tab page. To turn it on again, open chrome://extensions. Disable it now?",
+    disableExtensionFailed: "The extension could not be disabled. Turn it off manually at chrome://extensions.",
+    disableExtensionUnavailable: "This environment cannot disable the extension directly.",
     customize: "Customize",
     customizeTitle: "Customize",
     designThemeTitle: "Interface Theme",
@@ -672,6 +712,24 @@ const translations = {
     storageWriteFailed: "The imported presets could not be saved",
     dataTransferTitle: "Complete Data Import / Export",
     dataTransferCopy: "Back up or restore websites, categories, ordering, search engines, history, and all appearance data. Import requires confirmation.",
+    importChromeBookmarks: "IMPORT CHROME BOOKMARKS",
+    bookmarkImportTitle: "IMPORT CHROME BOOKMARKS",
+    bookmarkImportCopy: "Top-level Bookmarks Bar folders become categories. Websites inside nested folders are imported recursively. Runner only reads bookmarks and never changes or deletes them.",
+    bookmarkImportReading: "Reading Chrome bookmarks...",
+    bookmarksBar: "Bookmarks Bar",
+    bookmarkImportGroupCount: "{count} websites",
+    bookmarkImportSummary: "{groups} categories selected, {sites} valid websites",
+    bookmarkImportSelectAll: "SELECT ALL",
+    bookmarkImportClearAll: "CLEAR ALL",
+    bookmarkImportAction: "IMPORT SELECTED",
+    bookmarkImporting: "IMPORTING...",
+    bookmarkImportEmpty: "No importable websites were found in the Bookmarks Bar.",
+    bookmarkImportBarMissing: "Chrome's Bookmarks Bar could not be found.",
+    bookmarkImportReadFailed: "Chrome bookmarks could not be read. Check the extension permission and try again.",
+    bookmarkImportUnavailable: "Chrome bookmarks are unavailable in this environment.",
+    bookmarkImportResult: "Import complete: {categories} categories and {imported} websites added; {duplicates} duplicates and {invalid} invalid URLs skipped.",
+    bookmarkImportNoChanges: "No websites were added. Duplicate or invalid URLs were skipped.",
+    bookmarkImportStorageFailed: "Import failed. Existing data was not changed.",
     exportAllData: "EXPORT FULL BACKUP",
     importAllData: "IMPORT FULL BACKUP",
     dataExported: "Complete data backup exported",
@@ -1030,7 +1088,6 @@ async function boot() {
   needsDataMigration = false;
   setDate();
   bindEvents();
-  render();
 
   try {
     const saved = await readData();
@@ -1054,7 +1111,8 @@ async function boot() {
 
 function normalizeState(data) {
   const locale = normalizeLocale(data.locale);
-  const mode = data.mode === "classic" ? "classic" : "runner";
+  const mode = "runner";
+  if (data.mode === "classic") needsDataMigration = true;
   const searchEngines = normalizeSearchEngines(data.searchEngines);
   const activeSearchEngineId = searchEngines.some((engine) => engine.id === data.activeSearchEngineId)
     ? data.activeSearchEngineId
@@ -1548,14 +1606,23 @@ function bindEvents() {
   });
   els.backgroundFileInput.addEventListener("change", onBackgroundFileChange);
   els.exportDataBtn.addEventListener("click", exportCompleteData);
+  els.importBookmarksBtn.addEventListener("click", openBookmarkImportDialog);
   els.importDataBtn.addEventListener("click", () => {
     els.dataBackupFileInput.value = "";
     els.dataBackupFileInput.click();
   });
   els.dataBackupFileInput.addEventListener("change", onDataBackupFileChange);
+  els.bookmarkImportList.addEventListener("change", onBookmarkImportSelectionChange);
+  els.toggleAllBookmarkGroupsBtn.addEventListener("click", toggleAllBookmarkGroups);
+  els.closeBookmarkImportBtn.addEventListener("click", closeBookmarkImportDialog);
+  els.cancelBookmarkImportBtn.addEventListener("click", closeBookmarkImportDialog);
+  els.confirmBookmarkImportBtn.addEventListener("click", importSelectedBookmarks);
+  els.bookmarkImportDialog.addEventListener("cancel", (event) => {
+    if (bookmarkImportBusy) event.preventDefault();
+  });
   els.languageToggleBtn.addEventListener("click", toggleLocale);
   els.classicLanguageBtn.addEventListener("click", toggleLocale);
-  els.nativeHomeBtn.addEventListener("click", openNativeChromeHome);
+  els.nativeHomeBtn.addEventListener("click", disableExtension);
   els.runnerHomeBtn.addEventListener("click", () => setMode("runner"));
   els.classicSearchForm.addEventListener("submit", onClassicSearch);
   els.refreshIconBtn.addEventListener("click", updateIconPreview);
@@ -1684,6 +1751,8 @@ function applyI18n() {
   els.classicLanguageBtn.textContent = t("languageToggle");
   els.classicLanguageBtn.setAttribute("aria-label", t("languageTitle"));
   els.nativeHomeBtn.textContent = t("nativeHome");
+  els.nativeHomeBtn.title = t("disableExtensionTitle");
+  els.nativeHomeBtn.setAttribute("aria-label", t("disableExtensionTitle"));
   els.customizeBtn.textContent = t("customize");
   els.runnerHomeBtn.textContent = t("runnerHome");
   els.searchPrefix.textContent = t("searchPrefix");
@@ -1779,6 +1848,7 @@ function applyI18n() {
   els.removeBackgroundBtn.textContent = t("removeBackground");
   els.dataTransferTitle.textContent = t("dataTransferTitle");
   els.dataTransferCopy.textContent = t("dataTransferCopy");
+  els.importBookmarksBtn.textContent = t("importChromeBookmarks");
   els.exportDataBtn.textContent = t("exportAllData");
   els.importDataBtn.textContent = t("importAllData");
   els.resetTitle.textContent = t("resetTitle");
@@ -1797,7 +1867,7 @@ function applyI18n() {
   setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.0.0"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.1.0"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");
@@ -1817,6 +1887,10 @@ function applyI18n() {
   els.closePresetImportResultBtn.title = t("closeDialog");
   els.closePresetImportResultBtn.setAttribute("aria-label", t("closeDialog"));
   if (els.presetImportResultDialog.open) renderPresetImportResult();
+  els.closeBookmarkImportBtn.title = t("closeDialog");
+  els.closeBookmarkImportBtn.setAttribute("aria-label", t("closeDialog"));
+  els.cancelBookmarkImportBtn.textContent = t("cancel");
+  if (els.bookmarkImportDialog.open) renderBookmarkImportDialog();
 }
 
 function setRailButtonLabel(button, label) {
@@ -1894,6 +1968,7 @@ function applyAppearance() {
   document.body.dataset.background = appearance.background;
   document.body.dataset.cardDensity = appearance.cardDensity;
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
+  document.body.classList.toggle("has-panel-blur", appearance.panelBlur > 0);
   document.body.style.setProperty("--accent", appearance.accentColor);
   document.body.style.setProperty("--line-hot", appearance.accentColor);
   document.body.style.setProperty("--accent-rgb", accentRgb.join(" "));
@@ -3932,19 +4007,188 @@ async function setMode(mode) {
   render();
 }
 
-function openNativeChromeHome() {
+function readChromeBookmarksTree() {
+  const api = globalThis.chrome?.bookmarks;
+  if (!api || typeof api.getTree !== "function") {
+    return Promise.reject(Object.assign(new Error("bookmarks unavailable"), { code: "unavailable" }));
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      api.getTree((tree) => {
+        const error = globalThis.chrome?.runtime?.lastError;
+        if (error) {
+          reject(new Error(error.message || "bookmark read failed"));
+          return;
+        }
+        resolve(Array.isArray(tree) ? tree : []);
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function openBookmarkImportDialog() {
+  if (bookmarkImportBusy) return;
+  bookmarkImportGroups = [];
+  bookmarkImportSelectedIds = new Set();
+  clearError(els.bookmarkImportError);
+  if (!els.bookmarkImportDialog.open) els.bookmarkImportDialog.showModal();
+  bookmarkImportBusy = true;
+  renderBookmarkImportDialog();
+
   try {
-    window.location.assign("chrome://new-tab-page/");
-  } catch {
-    setMode("classic");
+    const tree = await readChromeBookmarksTree();
+    const importer = globalThis.RunnerBookmarkImport;
+    if (!importer) throw Object.assign(new Error("bookmark importer unavailable"), { code: "unavailable" });
+    const preview = importer.buildBookmarkImportPreview(tree, { rootTitle: t("bookmarksBar") });
+    if (!preview.found) {
+      showError(els.bookmarkImportError, t("bookmarkImportBarMissing"));
+      return;
+    }
+    bookmarkImportGroups = preview.groups;
+    bookmarkImportSelectedIds = new Set(preview.groups
+      .filter((group) => group.validCount > 0)
+      .map((group) => group.id));
+    if (!preview.groups.some((group) => group.validCount > 0)) {
+      showError(els.bookmarkImportError, t("bookmarkImportEmpty"));
+    }
+  } catch (error) {
+    showError(
+      els.bookmarkImportError,
+      t(error?.code === "unavailable" ? "bookmarkImportUnavailable" : "bookmarkImportReadFailed")
+    );
+  } finally {
+    bookmarkImportBusy = false;
+    renderBookmarkImportDialog();
+  }
+}
+
+function renderBookmarkImportDialog() {
+  els.bookmarkImportTitle.textContent = t("bookmarkImportTitle");
+  els.bookmarkImportCopy.textContent = t("bookmarkImportCopy");
+  const selectedGroups = bookmarkImportGroups.filter((group) => bookmarkImportSelectedIds.has(group.id));
+  const selectedSites = selectedGroups.reduce((total, group) => total + group.validCount, 0);
+  els.bookmarkImportSummary.textContent = bookmarkImportBusy && !bookmarkImportGroups.length
+    ? t("bookmarkImportReading")
+    : t("bookmarkImportSummary", { groups: selectedGroups.length, sites: selectedSites });
+
+  const fragment = document.createDocumentFragment();
+  bookmarkImportGroups.forEach((group) => {
+    const item = document.createElement("label");
+    item.className = "bookmark-import-item";
+    item.setAttribute("role", "listitem");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.bookmarkGroupId = group.id;
+    checkbox.checked = bookmarkImportSelectedIds.has(group.id);
+    checkbox.disabled = bookmarkImportBusy || group.validCount < 1;
+
+    const copy = document.createElement("span");
+    copy.className = "bookmark-import-item-copy";
+    const title = document.createElement("strong");
+    title.textContent = group.title;
+    const count = document.createElement("small");
+    count.textContent = t("bookmarkImportGroupCount", { count: group.validCount });
+    copy.append(title, count);
+    item.append(checkbox, copy);
+    fragment.append(item);
+  });
+  els.bookmarkImportList.replaceChildren(fragment);
+
+  const selectableGroups = bookmarkImportGroups.filter((group) => group.validCount > 0);
+  const allSelected = selectableGroups.length > 0
+    && selectableGroups.every((group) => bookmarkImportSelectedIds.has(group.id));
+  els.toggleAllBookmarkGroupsBtn.textContent = t(allSelected ? "bookmarkImportClearAll" : "bookmarkImportSelectAll");
+  els.toggleAllBookmarkGroupsBtn.disabled = bookmarkImportBusy || selectableGroups.length < 1;
+  els.confirmBookmarkImportBtn.textContent = t(bookmarkImportBusy ? "bookmarkImporting" : "bookmarkImportAction");
+  els.confirmBookmarkImportBtn.disabled = bookmarkImportBusy || selectedSites < 1;
+  els.cancelBookmarkImportBtn.disabled = bookmarkImportBusy;
+  els.closeBookmarkImportBtn.disabled = bookmarkImportBusy;
+  els.importBookmarksBtn.disabled = bookmarkImportBusy;
+}
+
+function onBookmarkImportSelectionChange(event) {
+  const checkbox = event.target.closest("[data-bookmark-group-id]");
+  if (!checkbox) return;
+  if (checkbox.checked) bookmarkImportSelectedIds.add(checkbox.dataset.bookmarkGroupId);
+  else bookmarkImportSelectedIds.delete(checkbox.dataset.bookmarkGroupId);
+  renderBookmarkImportDialog();
+}
+
+function toggleAllBookmarkGroups() {
+  const selectableGroups = bookmarkImportGroups.filter((group) => group.validCount > 0);
+  const allSelected = selectableGroups.length > 0
+    && selectableGroups.every((group) => bookmarkImportSelectedIds.has(group.id));
+  bookmarkImportSelectedIds = allSelected
+    ? new Set()
+    : new Set(selectableGroups.map((group) => group.id));
+  renderBookmarkImportDialog();
+}
+
+function closeBookmarkImportDialog() {
+  if (bookmarkImportBusy) return;
+  if (els.bookmarkImportDialog.open) els.bookmarkImportDialog.close();
+  bookmarkImportGroups = [];
+  bookmarkImportSelectedIds = new Set();
+  clearError(els.bookmarkImportError);
+}
+
+async function importSelectedBookmarks() {
+  if (bookmarkImportBusy || !bookmarkImportSelectedIds.size) return;
+  const importer = globalThis.RunnerBookmarkImport;
+  if (!importer) {
+    showError(els.bookmarkImportError, t("bookmarkImportUnavailable"));
     return;
   }
 
-  window.setTimeout(() => {
-    if (location.protocol === "chrome-extension:") {
-      setMode("classic");
-    }
-  }, 180);
+  const result = importer.buildBookmarkImportCandidate(state, bookmarkImportGroups, bookmarkImportSelectedIds);
+  if (!result.stats.imported) {
+    closeBookmarkImportDialog();
+    showToast(t("bookmarkImportNoChanges"));
+    return;
+  }
+
+  bookmarkImportBusy = true;
+  clearError(els.bookmarkImportError);
+  renderBookmarkImportDialog();
+  try {
+    await writeDataSnapshot(result.candidate);
+    state = result.candidate;
+    bookmarkImportBusy = false;
+    closeBookmarkImportDialog();
+    render();
+    showToast(t("bookmarkImportResult", {
+      categories: result.stats.createdCategories,
+      imported: result.stats.imported,
+      duplicates: result.stats.duplicates,
+      invalid: result.stats.invalid
+    }), "success");
+  } catch {
+    bookmarkImportBusy = false;
+    showError(els.bookmarkImportError, t("bookmarkImportStorageFailed"));
+    renderBookmarkImportDialog();
+  }
+}
+
+async function disableExtension() {
+  const shouldDisable = await openConfirmDialog(t("disableExtensionConfirm"), t("disableExtensionTitle"));
+  if (!shouldDisable) return;
+
+  const extensionId = globalThis.chrome?.runtime?.id;
+  const setEnabled = globalThis.chrome?.management?.setEnabled;
+  if (!extensionId || typeof setEnabled !== "function") {
+    showToast(t("disableExtensionUnavailable"), "error");
+    return;
+  }
+
+  try {
+    await setEnabled.call(chrome.management, extensionId, false);
+  } catch {
+    showToast(t("disableExtensionFailed"), "error");
+  }
 }
 
 function openCategoryDialog(category) {

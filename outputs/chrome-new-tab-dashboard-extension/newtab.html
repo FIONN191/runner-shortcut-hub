@@ -101,7 +101,7 @@
         <span id="footerProduct">Runner Shortcut Hub</span>
         <span id="footerStatus"></span>
         <span id="footerTheme"></span>
-        <span id="footerVersion">v2.0.0</span>
+        <span id="footerVersion">v2.1.0</span>
       </footer>
 
       <section id="classicHome" class="classic-home" hidden>
@@ -328,6 +328,7 @@
           <p id="dataTransferCopy" class="preview-copy"></p>
           <input id="dataBackupFileInput" type="file" accept=".json,application/json" hidden>
           <div class="data-transfer-actions">
+            <button id="importBookmarksBtn" class="ghost-button" type="button"></button>
             <button id="exportDataBtn" class="ghost-button" type="button"></button>
             <button id="importDataBtn" class="ghost-button" type="button"></button>
           </div>
@@ -389,6 +390,28 @@
       </div>
     </dialog>
 
+    <dialog id="bookmarkImportDialog" class="modal bookmark-import-modal">
+      <div class="modal-head">
+        <div>
+          <span class="feedback-code">LOCAL.BOOKMARKS / READ</span>
+          <h3 id="bookmarkImportTitle"></h3>
+        </div>
+        <button id="closeBookmarkImportBtn" class="icon-button" type="button">×</button>
+      </div>
+      <p id="bookmarkImportCopy" class="preview-copy"></p>
+      <div class="bookmark-import-toolbar">
+        <span id="bookmarkImportSummary" role="status"></span>
+        <button id="toggleAllBookmarkGroupsBtn" class="ghost-button compact-button" type="button"></button>
+      </div>
+      <div id="bookmarkImportList" class="bookmark-import-list" role="list"></div>
+      <p id="bookmarkImportError" class="form-error" hidden></p>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="cancelBookmarkImportBtn" class="ghost-button" type="button"></button>
+        <button id="confirmBookmarkImportBtn" class="primary-button" type="button"></button>
+      </div>
+    </dialog>
+
     <dialog id="shortcutDialog" class="modal">
       <form id="shortcutForm" method="dialog" novalidate>
         <div class="modal-head">
@@ -434,6 +457,7 @@
 
     <div id="toastRegion" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
 
+    <script src="src/core/bookmark-import.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

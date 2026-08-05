@@ -15,8 +15,11 @@ assert.match(app, /function openConfirmDialog\(/);
 assert.match(app, /function openTextPrompt\(/);
 assert.match(app, /function showToast\(/);
 assert.match(html, /id="feedbackDialog"/);
+assert.match(html, /id="bookmarkImportDialog"/);
+assert.match(html, /id="importBookmarksBtn"/);
 assert.match(html, /id="toastRegion"/);
 assert.match(styles, /\.toast-region\s*\{/);
 assert.match(styles, /\.feedback-modal\s*\{/);
+assert.doesNotMatch(styles, /animation:\s*runner-enter/);
 
 console.log("Interaction v2 tests passed");
