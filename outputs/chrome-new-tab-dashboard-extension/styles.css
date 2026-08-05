@@ -195,6 +195,8 @@ button {
 }
 
 .topbar {
+  position: relative;
+  z-index: 50;
   display: grid;
   grid-template-columns: minmax(230px, 300px) minmax(360px, 1fr) 190px;
   gap: 12px;
@@ -332,6 +334,7 @@ body.has-panel-blur .search-history-panel {
 }
 
 .search {
+  z-index: 2;
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr) 72px 46px 58px 88px;
   gap: 0;
@@ -460,7 +463,7 @@ body.has-panel-blur .search-history-panel {
   top: calc(100% + 8px);
   left: 84px;
   right: 8px;
-  z-index: 40;
+  z-index: 200;
   border: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(216, 255, 61, 0.08), transparent),
@@ -606,6 +609,7 @@ body.has-panel-blur .search-history-panel {
 }
 
 .workspace {
+  z-index: 1;
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 650px;

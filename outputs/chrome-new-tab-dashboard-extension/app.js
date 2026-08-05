@@ -379,7 +379,7 @@ const translations = {
     addCategoryTitle: "添加分类",
     languageToggle: "中文 / English",
     searchPrefix: "搜索",
-    searchEngineGo: "前往",
+    searchEngineGo: "搜索引擎",
     searchPlaceholder: "搜索 Google 或输入网址",
     searchButton: "打开",
     clearSearchInput: "清除输入",
@@ -595,7 +595,7 @@ const translations = {
     addCategoryTitle: "Add category",
     languageToggle: "中文 / English",
     searchPrefix: "SEARCH",
-    searchEngineGo: "GO",
+    searchEngineGo: "Search Engine",
     searchPlaceholder: "Search Google or enter a URL",
     searchButton: "OPEN",
     clearSearchInput: "Clear input",
@@ -1765,9 +1765,11 @@ function applyI18n() {
   els.searchSubmitBtn.title = t("searchButton");
   els.searchSubmitBtn.setAttribute("aria-label", t("searchButton"));
   els.historyToggleBtn.textContent = t("historyToggle");
-  els.historyToggleBtn.title = state.showSearchHistory ? t("hideHistory") : t("showHistory");
-  els.historyToggleBtn.setAttribute("aria-label", state.showSearchHistory ? t("hideHistory") : t("showHistory"));
-  els.historyToggleBtn.setAttribute("aria-pressed", String(state.showSearchHistory));
+  const historyPanelOpen = !els.searchHistoryPanel.hidden;
+  els.historyToggleBtn.title = t(historyPanelOpen ? "hideHistory" : "showHistory");
+  els.historyToggleBtn.setAttribute("aria-label", t(historyPanelOpen ? "hideHistory" : "showHistory"));
+  els.historyToggleBtn.setAttribute("aria-expanded", String(historyPanelOpen));
+  els.historyToggleBtn.setAttribute("aria-pressed", String(historyPanelOpen));
   els.historyToggleBtn.classList.toggle("is-off", !state.showSearchHistory);
   els.searchPanelTitle.textContent = els.searchInput.value.trim() ? t("relatedSearches") : t("searchHistory");
   els.clearHistoryBtn.textContent = t("clearHistory");
@@ -1867,7 +1869,7 @@ function applyI18n() {
   setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.1.0"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.1.1"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");
@@ -2345,10 +2347,9 @@ function renderCategories() {
 function renderSearchEngineControls() {
   state.searchEngines = normalizeSearchEngines(state.searchEngines);
   const activeEngine = getActiveSearchEngine();
-  els.searchEngineBtn.textContent = activeEngine.id === "google"
-    ? t("searchEngineGo")
-    : (activeEngine.shortcut || activeEngine.name);
+  els.searchEngineBtn.textContent = t("searchEngine");
   els.searchEngineBtn.dataset.engineId = activeEngine.id;
+  els.searchEngineBtn.title = `${t("switchSearchEngine")}: ${searchEngineLabel(activeEngine)}`;
   renderSearchEngineList();
   if (!els.searchEngineId.value) resetSearchEngineForm(false);
 }
@@ -4741,10 +4742,18 @@ async function addSearchHistory(value) {
 }
 
 async function toggleSearchHistory() {
-  state.showSearchHistory = !state.showSearchHistory;
-  await writeData();
-  render();
-  if (state.showSearchHistory) showSearchHistoryPanel();
+  if (!els.searchHistoryPanel.hidden) {
+    hideSearchHistoryPanel();
+    return;
+  }
+
+  if (!state.showSearchHistory) {
+    state.showSearchHistory = true;
+    await writeData();
+    render();
+  }
+
+  showSearchHistoryPanel(true);
 }
 
 async function hideSearchHistory() {
@@ -4771,15 +4780,23 @@ function updateSearchClearButton() {
   els.searchClearBtn.hidden = !els.searchInput.value.trim();
 }
 
-function showSearchHistoryPanel() {
+function showSearchHistoryPanel(forceOpen = false) {
   const query = els.searchInput.value.trim();
-  if (!state.showSearchHistory || (!query && !state.searchHistory.length)) return;
+  if (!state.showSearchHistory || (!forceOpen && !query && !state.searchHistory.length)) return;
   renderSearchPanel();
   els.searchHistoryPanel.hidden = false;
+  els.historyToggleBtn.setAttribute("aria-expanded", "true");
+  els.historyToggleBtn.setAttribute("aria-pressed", "true");
+  els.historyToggleBtn.title = t("hideHistory");
+  els.historyToggleBtn.setAttribute("aria-label", t("hideHistory"));
 }
 
 function hideSearchHistoryPanel() {
   els.searchHistoryPanel.hidden = true;
+  els.historyToggleBtn.setAttribute("aria-expanded", "false");
+  els.historyToggleBtn.setAttribute("aria-pressed", "false");
+  els.historyToggleBtn.title = t("showHistory");
+  els.historyToggleBtn.setAttribute("aria-label", t("showHistory"));
 }
 
 function onSearchInputKeydown(event) {
