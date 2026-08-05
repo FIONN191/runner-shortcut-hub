@@ -72,7 +72,7 @@ Runner Shortcut Hub replaces Chrome's New Tab page with a local, customizable da
 - User data sold or shared: No
 - Data transmitted to developer-operated servers: No
 - In-app purchases: No
-- Privacy policy URL: `https://fionn191.github.io/runner-shortcut-hub/privacy-policy.html`
+- Privacy policy URL: `https://fionn191.github.io/runner-shortcut-hub/outputs/chrome-web-store-submission/privacy-policy.html`
 
 ## Distribution
 
