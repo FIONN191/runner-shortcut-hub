@@ -3,50 +3,86 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>Runner Shortcut Hub Privacy Policy</title>
     <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.65;
+      }
       body {
         margin: 0;
         background: #f6f8f2;
         color: #151713;
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
       }
       main {
-        max-width: 760px;
+        max-width: 780px;
         margin: 0 auto;
-        padding: 48px 24px;
+        padding: 48px 24px 72px;
       }
       h1, h2 {
         line-height: 1.2;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      h2 {
+        margin-top: 2rem;
       }
       code {
         background: #e8ecd8;
         padding: 2px 5px;
         border-radius: 4px;
       }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #10130f;
+          color: #edf1e7;
+        }
+        code {
+          background: #283022;
+        }
+      }
     </style>
   </head>
   <body>
     <main>
       <h1>Privacy Policy for Runner Shortcut Hub</h1>
-      <p>Last updated: July 5, 2026</p>
-      <p>Runner Shortcut Hub is a Chrome extension that replaces the new tab page with a customizable shortcut dashboard.</p>
+      <p>Last updated: August 6, 2026</p>
+      <p>Runner Shortcut Hub is a Chrome extension that replaces the new tab page with a customizable shortcut dashboard. Its single purpose is to help users organize and open websites from a personalized Chrome new tab page.</p>
 
-      <h2>Data Stored by the Extension</h2>
-      <p>The extension stores shortcut titles, shortcut URLs, shortcut colors, category names, optional category icon images, optional custom background images, search history entries, selected language, selected appearance, and selected view mode locally in Chrome storage. This information is used only to display and restore the user's new tab dashboard, uploaded local icon/background images, and optional search history.</p>
+      <h2>Data Stored Locally</h2>
+      <p>Runner Shortcut Hub stores shortcut titles, URLs, colors, icons, order and local usage counts; category names, icons, order and local usage counts; imported bookmark titles and URLs; search history and custom search-engine settings; language, appearance, layout, wallpaper and preset settings; and optional user-uploaded category icons and background images in Chrome's local extension storage.</p>
+      <p>This information is used only to display and restore the user's dashboard. It is not sent to the developer or to a developer-operated server.</p>
+
+      <h2>Bookmark Access</h2>
+      <p>The extension reads Chrome bookmarks only when the user starts the bookmark import feature. Bookmark folder names, bookmark titles, and bookmark URLs selected for import are copied into the local dashboard. Bookmark data is not uploaded, sold, shared, or used for advertising.</p>
+
+      <h2>Search and External Websites</h2>
+      <p>When the user submits a search or opens a shortcut, Chrome navigates to the selected search engine or website. Those external sites may process the query or URL under their own privacy policies. Runner Shortcut Hub does not proxy, inspect, or transmit that navigation to the developer.</p>
 
       <h2>Data Collection and Sharing</h2>
-      <p>Runner Shortcut Hub does not collect, sell, share, or transmit user data to the developer. The extension does not use analytics, advertising SDKs, tracking pixels, or remote code.</p>
+      <p>Runner Shortcut Hub does not collect, sell, share, or transmit user data to the developer. It does not use analytics, advertising SDKs, tracking pixels, or remotely hosted executable code.</p>
+      <p>The extension's use of information received from Chrome APIs complies with the Chrome Web Store User Data Policy, including its Limited Use requirements. Data is used only to provide the user-facing dashboard features, is not transferred for advertising or credit-related purposes, and is not made available for human review.</p>
 
       <h2>Permissions</h2>
-      <p>The extension uses the <code>storage</code> permission to save the user's dashboard settings locally. The extension uses the <code>favicon</code> permission to display website icons for user-saved shortcut URLs through Chrome's favicon API.</p>
+      <ul>
+        <li><code>bookmarks</code>: reads bookmark folders and entries only for a user-initiated import into dashboard categories.</li>
+        <li><code>favicon</code>: displays website icons for user-saved shortcut URLs through Chrome's favicon API.</li>
+        <li><code>management</code>: lets the user disable Runner Shortcut Hub itself from its own interface to restore Chrome's original new tab page. The extension does not manage other extensions.</li>
+        <li><code>storage</code>: saves dashboard data and preferences locally in Chrome.</li>
+        <li><code>unlimitedStorage</code>: allows optional user-uploaded icons, wallpapers, and appearance presets to remain available locally without a small storage quota interrupting those features.</li>
+      </ul>
 
-      <h2>Data Deletion</h2>
-      <p>Users can delete shortcuts and categories inside the extension interface. Users can also remove all locally stored extension data by uninstalling the extension from Chrome.</p>
+      <h2>Data Retention and Deletion</h2>
+      <p>Data remains in local Chrome extension storage until the user deletes it or uninstalls the extension. Users can delete shortcuts and categories, clear search history, remove custom backgrounds, or reset appearance settings from the extension interface. Uninstalling the extension removes its locally stored data according to Chrome's storage behavior.</p>
+
+      <h2>Changes</h2>
+      <p>If this privacy policy changes, the updated version will be posted at the same public URL with a revised date.</p>
 
       <h2>Contact</h2>
-      <p>For privacy questions, use the developer contact email listed on the Chrome Web Store page.</p>
+      <p>For privacy questions, contact <a href="mailto:fionnleoxander@gmail.com">fionnleoxander@gmail.com</a>.</p>
     </main>
   </body>
 </html>
