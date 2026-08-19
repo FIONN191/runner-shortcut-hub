@@ -463,9 +463,10 @@ const translations = {
     fontScale: "字体大小",
     cardDensity: "卡片密度",
     shortcutSettings: "快捷方式",
-    sortShortcutsByUsage: "按使用频次排序",
-    sortShortcutsByUsageDescription: "开启后，常用网站会优先显示；关闭后恢复手动排序。",
-    shortcutUsageSortActiveHint: "当前按使用频次排序，关闭后可拖动调整位置。",
+    sortShortcutsByUsage: "分类和网站按使用频次排序",
+    sortShortcutsByUsageDescription: "开启后，常用分类和网站会优先显示；关闭后恢复手动排序。",
+    categoryUsageSortActiveHint: "当前按使用频次排序，关闭后可拖动调整分类位置。",
+    shortcutUsageSortActiveHint: "当前按使用频次排序，关闭后可拖动调整网站位置。",
     densityCompact: "紧凑",
     densityComfortable: "标准",
     densitySpacious: "宽松",
@@ -683,9 +684,10 @@ const translations = {
     fontScale: "Font Size",
     cardDensity: "Card Density",
     shortcutSettings: "Shortcuts",
-    sortShortcutsByUsage: "Sort by Usage",
-    sortShortcutsByUsageDescription: "Frequently used websites appear first. Turn it off to restore manual order.",
-    shortcutUsageSortActiveHint: "Usage sorting is active. Turn it off to drag and reorder shortcuts.",
+    sortShortcutsByUsage: "Sort Categories and Websites by Usage",
+    sortShortcutsByUsageDescription: "Frequently used categories and websites appear first. Turn it off to restore manual order.",
+    categoryUsageSortActiveHint: "Usage sorting is active. Turn it off to drag and reorder categories.",
+    shortcutUsageSortActiveHint: "Usage sorting is active. Turn it off to drag and reorder websites.",
     densityCompact: "Compact",
     densityComfortable: "Comfortable",
     densitySpacious: "Spacious",
@@ -2343,13 +2345,13 @@ function renderBackgroundTuningControls() {
 
 function renderCategories() {
   els.categoryList.replaceChildren(
-    ...orderedCategories().map((category) => {
+    ...categoriesForDisplay().map((category) => {
       const count = state.shortcuts.filter((shortcut) => shortcut.categoryId === category.id).length;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "category-button";
       button.dataset.categoryId = category.id;
-      button.title = t("categoryDragHint");
+      button.title = t(state.sortShortcutsByUsage ? "categoryUsageSortActiveHint" : "categoryDragHint");
       button.setAttribute("aria-current", String(category.id === state.activeCategoryId));
       button.innerHTML = `
         <span class="category-main">
@@ -2581,6 +2583,16 @@ function orderedCategories() {
   });
 }
 
+function categoriesForDisplay() {
+  const categories = orderedCategories();
+  if (!state.sortShortcutsByUsage) return categories;
+
+  return categories.sort((a, b) => (
+    normalizeUseCount(b.useCount) - normalizeUseCount(a.useCount)
+    || a.order - b.order
+  ));
+}
+
 function setCategoryOrder(categories) {
   categories.forEach((category, index) => {
     const target = state.categories.find((item) => item.id === category.id);
@@ -2593,15 +2605,6 @@ function nextCategoryOrder() {
     const order = Number.isFinite(category.order) ? category.order : -1;
     return Math.max(max, order);
   }, -1) + 1;
-}
-
-function sortCategoriesByUsage() {
-  const sorted = orderedCategories().sort((a, b) => {
-    const useA = Number.isFinite(a.useCount) ? a.useCount : 0;
-    const useB = Number.isFinite(b.useCount) ? b.useCount : 0;
-    return useB - useA || a.order - b.order;
-  });
-  setCategoryOrder(sorted);
 }
 
 function renderShortcuts() {
@@ -4014,7 +4017,6 @@ async function recordCategoryUse(categoryId, shouldWrite = true) {
   const category = state.categories.find((item) => item.id === categoryId);
   if (!category) return;
   category.useCount = (Number.isFinite(category.useCount) ? category.useCount : 0) + 1;
-  sortCategoriesByUsage();
   if (shouldWrite) {
     await writeData();
   }
@@ -4051,8 +4053,7 @@ async function recordShortcutUse(shortcutId) {
 async function onSortShortcutsByUsageChange(event) {
   state.sortShortcutsByUsage = event.currentTarget.checked;
   await writeData();
-  renderShortcuts();
-  if (state.mode === "classic") renderClassicShortcuts();
+  render();
 }
 
 async function toggleLocale() {
@@ -4260,8 +4261,8 @@ function openCategoryDialog(category) {
   els.categoryIconFileInput.value = "";
   updateCategoryIconPreview();
   els.deleteCategoryBtn.hidden = !isEdit || state.categories.length < 2;
-  els.moveCategoryUpBtn.hidden = !isEdit;
-  els.moveCategoryDownBtn.hidden = !isEdit;
+  els.moveCategoryUpBtn.hidden = !isEdit || state.sortShortcutsByUsage;
+  els.moveCategoryDownBtn.hidden = !isEdit || state.sortShortcutsByUsage;
   els.categoryDialog.showModal();
   els.categoryNameInput.focus();
 }
@@ -4321,6 +4322,7 @@ async function onDeleteCategory() {
 }
 
 async function moveCategory(direction) {
+  if (state.sortShortcutsByUsage) return;
   const id = els.categoryId.value;
   const categories = orderedCategories();
   const index = categories.findIndex((category) => category.id === id);
@@ -4395,6 +4397,7 @@ function resizeImageToDataUrl(file, size) {
 }
 
 function onCategoryPointerDown(event) {
+  if (state.sortShortcutsByUsage) return;
   if (event.button !== 0) return;
   const button = event.target.closest("[data-category-id]");
   if (!button) return;
