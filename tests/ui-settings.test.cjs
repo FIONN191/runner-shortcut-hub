@@ -315,6 +315,9 @@ function nonAppearanceSnapshot(state) {
   assert.match(css, /\.search-result-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
   assert.match(css, /\.shape-preview-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
   assert.match(css, /\.appearance-preview-icon[\s\S]*?border-radius:\s*var\(--icon-radius\)/);
+  assert.match(css, /\.setting-switch\s*\{[\s\S]*?min-height:\s*26px/);
+  assert.match(css, /\.setting-switch\s*\{[\s\S]*?padding:\s*0/);
+  assert.match(css, /\.setting-switch\s*\{[\s\S]*?overflow:\s*hidden/);
 
   console.log("UI settings and i18n tests passed");
 })().catch((error) => {
