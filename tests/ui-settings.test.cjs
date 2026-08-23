@@ -81,6 +81,7 @@ globalThis.__uiTestApi = {
   applyAppearance,
   createAppearancePreset,
   categoryIcon,
+  isDialogBackdropClick,
   normalizeState,
   categoriesForDisplay,
   shortcutsForDisplay,
@@ -126,6 +127,30 @@ function nonAppearanceSnapshot(state) {
   assert.equal(api.translate("en", "customize"), "Customize");
   assert.equal(api.translate("zh-CN", "sortShortcutsByUsage"), "分类和网站按使用频次排序");
   assert.equal(api.translate("en", "sortShortcutsByUsage"), "Sort Categories and Websites by Usage");
+
+  const customizeDialog = {
+    getBoundingClientRect: () => ({ left: 600, right: 1280, top: 0, bottom: 800 })
+  };
+  assert.equal(
+    api.isDialogBackdropClick({ target: customizeDialog, clientX: 420, clientY: 400 }, customizeDialog),
+    true,
+    "a click on the dimmed area to the left should be treated as a backdrop click"
+  );
+  assert.equal(
+    api.isDialogBackdropClick({ target: customizeDialog, clientX: 700, clientY: 400 }, customizeDialog),
+    false,
+    "a click inside the Customize drawer must not close it"
+  );
+  assert.equal(
+    api.isDialogBackdropClick({ target: {}, clientX: 420, clientY: 400 }, customizeDialog),
+    false,
+    "a click originating from a child control must not be treated as a backdrop click"
+  );
+  assert.equal(
+    api.isDialogBackdropClick({ target: customizeDialog, clientX: 600, clientY: 0 }, customizeDialog),
+    false,
+    "the drawer boundary belongs to the dialog, not the backdrop"
+  );
   api.translate("zh-CN", "customize");
   assert.equal(api.categoryIcon({ id: "video", name: "视频创作", icon: "影" }), "影");
   api.translate("en", "customize");

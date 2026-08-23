@@ -1560,6 +1560,7 @@ function bindEvents() {
   els.cancelSearchEngineBtn.addEventListener("click", resetSearchEngineForm);
   els.deleteSearchEngineBtn.addEventListener("click", deleteEditingSearchEngine);
   els.customizeBtn.addEventListener("click", openCustomizeDialog);
+  els.customizeDialog.addEventListener("click", onCustomizeDialogClick);
   els.railHomeBtn.addEventListener("click", () => setMode("runner"));
   els.railSearchBtn.addEventListener("click", () => {
     setMode("runner");
@@ -2054,6 +2055,23 @@ function systemTheme() {
 function openCustomizeDialog() {
   renderCustomizerControls();
   els.customizeDialog.showModal();
+}
+
+function isDialogBackdropClick(event, dialog) {
+  if (!dialog || event.target !== dialog) return false;
+  if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return false;
+
+  const rect = dialog.getBoundingClientRect();
+  return event.clientX < rect.left
+    || event.clientX > rect.right
+    || event.clientY < rect.top
+    || event.clientY > rect.bottom;
+}
+
+function onCustomizeDialogClick(event) {
+  if (isDialogBackdropClick(event, els.customizeDialog)) {
+    els.customizeDialog.close();
+  }
 }
 
 function renderCustomizerControls() {
