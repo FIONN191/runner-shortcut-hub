@@ -85,6 +85,8 @@ globalThis.__uiTestApi = {
   normalizeState,
   categoriesForDisplay,
   shortcutsForDisplay,
+  findSavedShortcuts,
+  savedShortcutMatchRank,
   recordShortcutUse,
   resetAppearance,
   getState: () => clone(state),
@@ -215,6 +217,54 @@ function nonAppearanceSnapshot(state) {
     "usage tracking must not overwrite the saved manual category order"
   );
   assert.equal(context.__lastSnapshot.sortShortcutsByUsage, true);
+
+  const finderState = api.getDefaultState();
+  finderState.locale = "en";
+  finderState.categories = [
+    { id: "tools", name: "Tools", icon: "TO", order: 0, useCount: 0 },
+    { id: "video", name: "Video", icon: "VI", order: 1, useCount: 0 },
+    { id: "fotor-category", name: "Fotor Resources", icon: "FO", order: 2, useCount: 0 }
+  ];
+  finderState.shortcuts = [
+    { id: "exact", categoryId: "tools", title: "Fotor", url: "https://www.fotor.com/", useCount: 1 },
+    { id: "prefix", categoryId: "tools", title: "Fotor Editor", url: "https://editor.example.com/", useCount: 3 },
+    { id: "contains-low", categoryId: "video", title: "AI Fotor Lab", url: "https://low.example.com/", useCount: 2 },
+    { id: "contains-high", categoryId: "video", title: "Best Fotor Tools", url: "https://high.example.com/", useCount: 20 },
+    { id: "host", categoryId: "tools", title: "Design Tool", url: "https://fotor.example.com/", useCount: 5 },
+    { id: "category", categoryId: "fotor-category", title: "Reference Library", url: "https://library.example.com/", useCount: 8 },
+    { id: "invalid", categoryId: "tools", title: "Broken Fotor", url: "javascript:alert(1)", useCount: 100 }
+  ];
+  finderState.sortShortcutsByUsage = false;
+  api.setState(finderState);
+  assert.deepEqual(
+    Array.from(api.findSavedShortcuts("fotor"), (result) => result.shortcutId),
+    ["exact", "prefix", "contains-low", "contains-high", "host", "category"],
+    "saved-site search should rank exact, prefix, title, host, and category matches"
+  );
+  assert.deepEqual(
+    Array.from(api.findSavedShortcuts("video"), (result) => result.shortcutId),
+    ["contains-low", "contains-high"],
+    "displayed category names should be searchable"
+  );
+  assert.deepEqual(Array.from(api.findSavedShortcuts("")), [], "an empty query should not reveal saved sites");
+
+  finderState.sortShortcutsByUsage = true;
+  api.setState(finderState);
+  assert.deepEqual(
+    Array.from(api.findSavedShortcuts("fotor"), (result) => result.shortcutId),
+    ["exact", "prefix", "contains-high", "contains-low", "host", "category"],
+    "usage sorting should only reorder results within the same relevance rank"
+  );
+  assert.equal(
+    api.savedShortcutMatchRank("fotor", {
+      title: "Other",
+      host: "example.com",
+      url: "https://example.com/fotor/start",
+      categoryName: "Tools"
+    }),
+    4,
+    "full URLs should be searchable"
+  );
 
   const normalizedCircle = api.normalizeAppearance({
     ...defaults.appearance,

@@ -121,6 +121,34 @@
       </section>
     </main>
 
+    <dialog id="focusSearchDialog" class="modal focus-search-modal">
+      <div class="modal-head focus-search-head">
+        <div>
+          <p id="focusSearchEyebrow" class="eyebrow"></p>
+          <h3 id="focusSearchDialogTitle"></h3>
+        </div>
+        <button id="closeFocusSearchBtn" class="icon-button close-dialog" type="button" value="cancel">×</button>
+      </div>
+      <div class="focus-search-body">
+        <label id="focusSearchInputLabel" class="sr-only" for="focusSearchInput"></label>
+        <div class="focus-search-field">
+          <span class="focus-search-glyph" aria-hidden="true">⌕</span>
+          <input
+            id="focusSearchInput"
+            type="search"
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="focusSearchResults"
+            aria-expanded="false"
+          >
+          <button id="clearFocusSearchBtn" class="focus-search-clear" type="button" hidden>×</button>
+        </div>
+        <p id="focusSearchStatus" class="focus-search-status" aria-live="polite"></p>
+        <div id="focusSearchResults" class="focus-search-results" role="listbox"></div>
+      </div>
+    </dialog>
+
     <dialog id="categoryDialog" class="modal">
       <form id="categoryForm" method="dialog" novalidate>
         <div class="modal-head">

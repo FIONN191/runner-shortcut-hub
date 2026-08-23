@@ -130,6 +130,9 @@ let feedbackResolver = null;
 let bookmarkImportGroups = [];
 let bookmarkImportSelectedIds = new Set();
 let bookmarkImportBusy = false;
+let focusSearchMatches = [];
+let focusSearchActiveIndex = -1;
+let focusSearchOpening = false;
 const CATEGORY_LONG_PRESS_MS = 500;
 const CATEGORY_DRAG_MOVE_PX = 7;
 const SHORTCUT_LONG_PRESS_MS = 500;
@@ -205,6 +208,15 @@ const els = {
   searchSuggestionList: document.querySelector("#searchSuggestionList"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   hideHistoryBtn: document.querySelector("#hideHistoryBtn"),
+  focusSearchDialog: document.querySelector("#focusSearchDialog"),
+  focusSearchEyebrow: document.querySelector("#focusSearchEyebrow"),
+  focusSearchDialogTitle: document.querySelector("#focusSearchDialogTitle"),
+  closeFocusSearchBtn: document.querySelector("#closeFocusSearchBtn"),
+  focusSearchInputLabel: document.querySelector("#focusSearchInputLabel"),
+  focusSearchInput: document.querySelector("#focusSearchInput"),
+  clearFocusSearchBtn: document.querySelector("#clearFocusSearchBtn"),
+  focusSearchStatus: document.querySelector("#focusSearchStatus"),
+  focusSearchResults: document.querySelector("#focusSearchResults"),
   categoryList: document.querySelector("#categoryList"),
   shortcutGrid: document.querySelector("#shortcutGrid"),
   emptyState: document.querySelector("#emptyState"),
@@ -442,6 +454,15 @@ const translations = {
     railSearch: "聚焦搜索",
     railCategories: "分类导航",
     railCustomize: "打开自定义",
+    focusSearchEyebrow: "本地网站索引",
+    focusSearchTitle: "查找已保存网站",
+    focusSearchInputLabel: "搜索已保存网站",
+    focusSearchPlaceholder: "输入网站名称、网址或分类",
+    focusSearchGuidance: "输入关键词后显示已保存的网站",
+    focusSearchNoSites: "暂无可搜索的已保存网站",
+    focusSearchNoMatches: "没有找到匹配的网站",
+    focusSearchClear: "清除网站搜索",
+    focusSearchResultsLabel: "已保存网站搜索结果",
     footerReady: "本地数据已就绪",
     footerTheme: "主题：{theme}",
     confirmationTitle: "确认操作",
@@ -663,6 +684,15 @@ const translations = {
     railSearch: "Focus Search",
     railCategories: "Category Navigation",
     railCustomize: "Open Customize",
+    focusSearchEyebrow: "LOCAL SITE INDEX",
+    focusSearchTitle: "Find Saved Websites",
+    focusSearchInputLabel: "Search saved websites",
+    focusSearchPlaceholder: "Enter a website, URL, or category",
+    focusSearchGuidance: "Type to find a saved website",
+    focusSearchNoSites: "No saved websites are available to search",
+    focusSearchNoMatches: "No matching websites found",
+    focusSearchClear: "Clear website search",
+    focusSearchResultsLabel: "Saved website search results",
     footerReady: "Local data ready",
     footerTheme: "Theme: {theme}",
     confirmationTitle: "Confirm Action",
@@ -1562,15 +1592,19 @@ function bindEvents() {
   els.customizeBtn.addEventListener("click", openCustomizeDialog);
   els.customizeDialog.addEventListener("click", onCustomizeDialogClick);
   els.railHomeBtn.addEventListener("click", () => setMode("runner"));
-  els.railSearchBtn.addEventListener("click", () => {
-    setMode("runner");
-    requestAnimationFrame(() => els.searchInput.focus());
-  });
+  els.railSearchBtn.addEventListener("click", openFocusSearchDialog);
   els.railCategoriesBtn.addEventListener("click", () => {
     setMode("runner");
     els.categoryList.querySelector("button")?.focus();
   });
   els.railCustomizeBtn.addEventListener("click", openCustomizeDialog);
+  els.focusSearchInput.addEventListener("input", () => renderFocusSearch({ resetSelection: true }));
+  els.focusSearchInput.addEventListener("keydown", onFocusSearchInputKeydown);
+  els.clearFocusSearchBtn.addEventListener("click", clearFocusSearch);
+  els.focusSearchResults.addEventListener("click", onFocusSearchResultClick);
+  els.focusSearchResults.addEventListener("pointermove", onFocusSearchResultPointerMove);
+  els.focusSearchDialog.addEventListener("click", onFocusSearchDialogClick);
+  els.focusSearchDialog.addEventListener("close", onFocusSearchDialogClosed);
   els.languageOptions.addEventListener("click", onLanguageOptionClick);
   els.designThemeOptions.addEventListener("click", onDesignThemeOptionClick);
   els.appearanceOptions.addEventListener("click", onAppearanceOptionClick);
@@ -1745,6 +1779,7 @@ function render() {
   renderCategories();
   updateSearchClearButton();
   renderSearchPanel();
+  if (els.focusSearchDialog.open) renderFocusSearch();
   renderShortcutSelect();
   renderShortcuts();
   if (els.customizeDialog.open) renderCustomizerControls();
@@ -1891,6 +1926,13 @@ function applyI18n() {
   setRailButtonLabel(els.railSearchBtn, t("railSearch"));
   setRailButtonLabel(els.railCategoriesBtn, t("railCategories"));
   setRailButtonLabel(els.railCustomizeBtn, t("railCustomize"));
+  els.focusSearchEyebrow.textContent = t("focusSearchEyebrow");
+  els.focusSearchDialogTitle.textContent = t("focusSearchTitle");
+  els.focusSearchInputLabel.textContent = t("focusSearchInputLabel");
+  els.focusSearchInput.placeholder = t("focusSearchPlaceholder");
+  els.clearFocusSearchBtn.title = t("focusSearchClear");
+  els.clearFocusSearchBtn.setAttribute("aria-label", t("focusSearchClear"));
+  els.focusSearchResults.setAttribute("aria-label", t("focusSearchResultsLabel"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
   els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.0"}`;
@@ -2534,6 +2576,253 @@ function buildSearchSuggestions(query) {
   }
 
   return suggestions.slice(0, SEARCH_SUGGESTION_LIMIT);
+}
+
+async function openFocusSearchDialog() {
+  if (state.mode !== "runner") await setMode("runner");
+  if (els.focusSearchDialog.open) {
+    els.focusSearchInput.focus();
+    return;
+  }
+
+  hideSearchHistoryPanel();
+  focusSearchOpening = false;
+  focusSearchMatches = [];
+  focusSearchActiveIndex = -1;
+  els.focusSearchInput.value = "";
+  els.railHomeBtn.classList.remove("is-active");
+  els.railSearchBtn.classList.add("is-active");
+  renderFocusSearch({ resetSelection: true });
+  els.focusSearchDialog.showModal();
+  requestAnimationFrame(() => els.focusSearchInput.focus());
+}
+
+function onFocusSearchDialogClick(event) {
+  if (isDialogBackdropClick(event, els.focusSearchDialog)) {
+    els.focusSearchDialog.close();
+  }
+}
+
+function onFocusSearchDialogClosed() {
+  focusSearchOpening = false;
+  focusSearchMatches = [];
+  focusSearchActiveIndex = -1;
+  els.focusSearchInput.value = "";
+  els.focusSearchResults.replaceChildren();
+  els.focusSearchInput.setAttribute("aria-expanded", "false");
+  els.focusSearchInput.removeAttribute("aria-activedescendant");
+  els.railSearchBtn.classList.remove("is-active");
+  els.railHomeBtn.classList.add("is-active");
+  requestAnimationFrame(() => els.railSearchBtn.focus());
+}
+
+function clearFocusSearch() {
+  els.focusSearchInput.value = "";
+  renderFocusSearch({ resetSelection: true });
+  els.focusSearchInput.focus();
+}
+
+function renderFocusSearch({ resetSelection = false } = {}) {
+  const query = els.focusSearchInput.value.trim();
+  els.clearFocusSearchBtn.hidden = !query;
+
+  if (!query) {
+    focusSearchMatches = [];
+    focusSearchActiveIndex = -1;
+    els.focusSearchResults.replaceChildren();
+    els.focusSearchResults.hidden = true;
+    els.focusSearchStatus.hidden = false;
+    els.focusSearchStatus.textContent = t("focusSearchGuidance");
+    els.focusSearchInput.setAttribute("aria-expanded", "false");
+    els.focusSearchInput.removeAttribute("aria-activedescendant");
+    return;
+  }
+
+  focusSearchMatches = findSavedShortcuts(query);
+  if (resetSelection) focusSearchActiveIndex = focusSearchMatches.length ? 0 : -1;
+  if (focusSearchActiveIndex >= focusSearchMatches.length) {
+    focusSearchActiveIndex = focusSearchMatches.length ? 0 : -1;
+  }
+
+  els.focusSearchResults.replaceChildren(
+    ...focusSearchMatches.map((match, index) => createFocusSearchResult(match, index))
+  );
+  els.focusSearchResults.hidden = !focusSearchMatches.length;
+  els.focusSearchStatus.hidden = Boolean(focusSearchMatches.length);
+  els.focusSearchStatus.textContent = focusSearchMatches.length
+    ? ""
+    : hasValidSavedShortcuts()
+      ? t("focusSearchNoMatches")
+      : t("focusSearchNoSites");
+  els.focusSearchInput.setAttribute("aria-expanded", String(Boolean(focusSearchMatches.length)));
+  setFocusSearchActiveIndex(focusSearchActiveIndex, false);
+}
+
+function findSavedShortcuts(rawQuery) {
+  const query = normalizeFinderText(rawQuery);
+  if (!query) return [];
+
+  const categoryOrder = new Map(orderedCategories().map((category, index) => [category.id, index]));
+  const categoryById = new Map(state.categories.map((category) => [category.id, category]));
+
+  return state.shortcuts
+    .map((shortcut, manualIndex) => {
+      const url = normalizeUrl(String(shortcut?.url || ""));
+      if (!url) return null;
+
+      const host = readableHost(url);
+      const title = String(shortcut?.title || "").trim() || host;
+      const category = categoryById.get(shortcut.categoryId);
+      const categoryName = category ? displayCategoryName(category) : "";
+      const rank = savedShortcutMatchRank(query, { title, host, url, categoryName });
+      if (rank === null) return null;
+
+      return {
+        shortcutId: shortcut.id,
+        shortcut: { ...shortcut, title, url },
+        title,
+        url,
+        host,
+        categoryName,
+        rank,
+        useCount: normalizeUseCount(shortcut.useCount),
+        categoryOrder: categoryOrder.get(shortcut.categoryId) ?? Number.MAX_SAFE_INTEGER,
+        manualIndex
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => (
+      left.rank - right.rank
+      || (state.sortShortcutsByUsage ? right.useCount - left.useCount : 0)
+      || left.categoryOrder - right.categoryOrder
+      || left.manualIndex - right.manualIndex
+    ));
+}
+
+function normalizeFinderText(value) {
+  return String(value || "").trim().toLocaleLowerCase(state.locale === "en" ? "en" : "zh-CN");
+}
+
+function savedShortcutMatchRank(query, { title, host, url, categoryName }) {
+  const normalizedTitle = normalizeFinderText(title);
+  const normalizedHost = normalizeFinderText(host);
+  const normalizedUrl = normalizeFinderText(url);
+  const normalizedCategory = normalizeFinderText(categoryName);
+
+  if (normalizedTitle === query) return 0;
+  if (normalizedTitle.startsWith(query)) return 1;
+  if (normalizedTitle.includes(query)) return 2;
+  if (normalizedHost.includes(query)) return 3;
+  if (normalizedUrl.includes(query) || normalizedCategory.includes(query)) return 4;
+  return null;
+}
+
+function hasValidSavedShortcuts() {
+  return state.shortcuts.some((shortcut) => normalizeUrl(String(shortcut?.url || "")));
+}
+
+function createFocusSearchResult(match, index) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "focus-search-result";
+  button.id = `focus-search-result-${index}`;
+  button.dataset.focusShortcutId = match.shortcutId;
+  button.dataset.focusSearchIndex = String(index);
+  button.setAttribute("role", "option");
+  button.setAttribute("aria-selected", String(index === focusSearchActiveIndex));
+
+  const icon = document.createElement("div");
+  paintShortcutIcon(icon, match.shortcut);
+
+  const copy = document.createElement("span");
+  copy.className = "focus-search-result-copy";
+  const title = document.createElement("strong");
+  title.textContent = match.title;
+  const host = document.createElement("span");
+  host.textContent = match.host;
+  copy.append(title, host);
+
+  const category = document.createElement("small");
+  category.className = "focus-search-category";
+  category.textContent = match.categoryName;
+  category.hidden = !match.categoryName;
+
+  button.append(icon, copy, category);
+  return button;
+}
+
+function setFocusSearchActiveIndex(index, shouldScroll = true) {
+  const buttons = [...els.focusSearchResults.querySelectorAll("[data-focus-shortcut-id]")];
+  if (!buttons.length || index < 0) {
+    focusSearchActiveIndex = -1;
+    els.focusSearchInput.removeAttribute("aria-activedescendant");
+    return;
+  }
+
+  focusSearchActiveIndex = ((index % buttons.length) + buttons.length) % buttons.length;
+  buttons.forEach((button, buttonIndex) => {
+    const isActive = buttonIndex === focusSearchActiveIndex;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  const activeButton = buttons[focusSearchActiveIndex];
+  els.focusSearchInput.setAttribute("aria-activedescendant", activeButton.id);
+  if (shouldScroll) activeButton.scrollIntoView({ block: "nearest" });
+}
+
+function onFocusSearchInputKeydown(event) {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    els.focusSearchDialog.close();
+    return;
+  }
+
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (!focusSearchMatches.length) return;
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    setFocusSearchActiveIndex(focusSearchActiveIndex + direction);
+    return;
+  }
+
+  if (event.key === "Enter" && focusSearchMatches.length) {
+    event.preventDefault();
+    const selected = focusSearchMatches[Math.max(0, focusSearchActiveIndex)];
+    if (selected) activateFocusSearchShortcut(selected.shortcutId);
+  }
+}
+
+function onFocusSearchResultPointerMove(event) {
+  const button = event.target.closest("[data-focus-search-index]");
+  if (!button) return;
+  const index = Number(button.dataset.focusSearchIndex);
+  if (Number.isInteger(index) && index !== focusSearchActiveIndex) {
+    setFocusSearchActiveIndex(index, false);
+  }
+}
+
+function onFocusSearchResultClick(event) {
+  const button = event.target.closest("[data-focus-shortcut-id]");
+  if (button) activateFocusSearchShortcut(button.dataset.focusShortcutId);
+}
+
+async function activateFocusSearchShortcut(shortcutId) {
+  if (focusSearchOpening) return;
+  const shortcut = state.shortcuts.find((item) => item.id === shortcutId);
+  const url = normalizeUrl(String(shortcut?.url || ""));
+  if (!shortcut || !url) {
+    renderFocusSearch();
+    return;
+  }
+
+  focusSearchOpening = true;
+  try {
+    await recordShortcutUse(shortcut.id);
+  } catch (error) {
+    console.warn("Unable to record Focus Search shortcut use", error);
+  }
+  window.location.href = url;
 }
 
 function relatedKeywordSuffixes(query) {
