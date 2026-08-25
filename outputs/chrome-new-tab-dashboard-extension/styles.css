@@ -13,6 +13,8 @@
   --soft: #cbd2bd;
   --accent: #d8ff3d;
   --accent-rgb: 216 255 61;
+  --accent-text: #d8ff3d;
+  --on-accent: #050505;
   --accent-cyan: #6cf0ff;
   --accent-violet: #7758ff;
   --custom-background-opacity: 1;
@@ -55,6 +57,8 @@ body[data-color-mode="light"] {
   --muted: #66715d;
   --soft: #2d3826;
   --accent: #7b9f12;
+  --accent-text: #526b00;
+  --on-accent: #050505;
   --accent-cyan: #007f91;
   --shadow: 0 24px 72px rgba(20, 35, 10, 0.24);
 }
@@ -264,6 +268,11 @@ body.has-panel-blur .search-history-panel {
   pointer-events: none;
 }
 
+body.has-rounded-cards .shortcut-card::before,
+body.has-rounded-cards .shortcut-card::after {
+  display: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -280,7 +289,7 @@ body.has-panel-blur .search-history-panel {
   place-items: center;
   border: 1px solid #0b0b0b;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
 }
 
 .brand-mark::before {
@@ -376,7 +385,7 @@ body.has-panel-blur .search-history-panel {
 .search-submit,
 .primary-button {
   border: 0;
-  color: #030303;
+  color: var(--on-accent);
   background: var(--accent);
   font-weight: 950;
   letter-spacing: 0;
@@ -534,7 +543,7 @@ body.has-panel-blur .search-history-panel {
   width: 24px;
   height: 24px;
   place-items: center;
-  color: #050505;
+  color: var(--on-accent);
   background: var(--accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
@@ -877,7 +886,7 @@ body.has-panel-blur .search-history-panel {
   height: 30px;
   place-items: center;
   border: 1px solid var(--line-weak);
-  color: #050505;
+  color: var(--on-accent);
   background: var(--accent);
   font-size: 12px;
   font-weight: 950;
@@ -1517,7 +1526,7 @@ body[data-color-mode="light"] .focus-search-field {
   height: 42px;
   place-items: center;
   border: 1px solid var(--line-weak);
-  color: #050505;
+  color: var(--on-accent);
   background: var(--accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
@@ -1819,7 +1828,7 @@ body[data-color-mode="light"] .focus-search-field {
   height: 38px;
   flex: 0 0 38px;
   place-items: center;
-  color: #050505;
+  color: var(--on-accent);
   background: var(--accent);
   font-weight: 950;
   border-radius: var(--icon-radius);
@@ -1920,7 +1929,7 @@ body[data-color-mode="light"] .preset-import-result-warning {
   width: 28px;
   height: 28px;
   place-items: center;
-  color: #050505;
+  color: var(--on-accent);
   background: var(--accent);
   border-radius: var(--icon-radius);
   font-size: 10px;

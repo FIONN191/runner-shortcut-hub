@@ -34,6 +34,18 @@ const makeElement = () => ({
 
 const localStorageValues = new Map();
 const body = makeElement();
+const bodyClassNames = new Set();
+body.classList = {
+  add: (...names) => names.forEach((name) => bodyClassNames.add(name)),
+  remove: (...names) => names.forEach((name) => bodyClassNames.delete(name)),
+  toggle: (name, force) => {
+    const shouldAdd = force === undefined ? !bodyClassNames.has(name) : Boolean(force);
+    if (shouldAdd) bodyClassNames.add(name);
+    else bodyClassNames.delete(name);
+    return shouldAdd;
+  },
+  contains: (name) => bodyClassNames.has(name)
+};
 const context = {
   console,
   structuredClone,
@@ -87,6 +99,9 @@ globalThis.__uiTestApi = {
   shortcutsForDisplay,
   findSavedShortcuts,
   savedShortcutMatchRank,
+  accessibleAccentText,
+  bestContrastingText,
+  contrastRatio,
   recordShortcutUse,
   resetAppearance,
   getState: () => clone(state),
@@ -285,15 +300,26 @@ function nonAppearanceSnapshot(state) {
   assert.equal(normalizedCircle.cardDensity, "compact");
 
   const stateWithAppearance = api.getDefaultState();
-  stateWithAppearance.appearance = normalizedCircle;
+  stateWithAppearance.appearance = {
+    ...normalizedCircle,
+    theme: "light",
+    accentColor: "#f8ff4a"
+  };
   api.setState(stateWithAppearance);
   styleValues.clear();
+  bodyClassNames.clear();
   api.applyAppearance();
   assert.equal(styleValues.get("--icon-radius"), "50%");
   assert.equal(styleValues.get("--card-radius"), "24px");
   assert.equal(styleValues.get("--panel-radius"), "0px");
   assert.equal(styleValues.get("--button-radius"), "9px");
   assert.equal(styleValues.get("--font-scale"), "1.08");
+  assert.equal(styleValues.get("--on-accent"), "#050505");
+  assert.ok(
+    api.contrastRatio(api.accessibleAccentText([248, 255, 74], "light"), [248, 250, 245]) >= 4.5,
+    "light-mode accent text must meet the WCAG AA contrast target"
+  );
+  assert.equal(bodyClassNames.has("has-rounded-cards"), true);
   assert.equal(body.dataset.cardDensity, "compact");
 
   const preset = api.createAppearancePreset("Shape Preset");
@@ -304,6 +330,12 @@ function nonAppearanceSnapshot(state) {
   assert.equal(preset.appearance.buttonRadius, 9);
   assert.equal(preset.appearance.fontScale, 1.08);
   assert.equal(preset.appearance.cardDensity, "compact");
+
+  const squareCardState = api.getState();
+  squareCardState.appearance.cardRadius = 0;
+  api.setState(squareCardState);
+  api.applyAppearance();
+  assert.equal(bodyClassNames.has("has-rounded-cards"), false);
 
   const backgroundImage = { id: "bg-1", image: "data:image/png;base64,AA==", accentColor: "#335577" };
   const stateForPreferences = api.getDefaultState();

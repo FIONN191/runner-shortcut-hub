@@ -2030,6 +2030,8 @@ function applyAppearance() {
   state.appearance = appearance;
   const resolvedTheme = appearance.theme === "system" ? systemTheme() : appearance.theme;
   const accentRgb = hexToRgb(appearance.accentColor);
+  const accentText = accessibleAccentText(accentRgb, resolvedTheme);
+  const onAccent = bestContrastingText(accentRgb);
   const activeCustomBackground = getActiveCustomBackground(appearance);
   document.documentElement.dataset.theme = appearance.designTheme;
   document.body.dataset.colorMode = resolvedTheme;
@@ -2037,9 +2039,12 @@ function applyAppearance() {
   document.body.dataset.cardDensity = appearance.cardDensity;
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
   document.body.classList.toggle("has-panel-blur", appearance.panelBlur > 0);
+  document.body.classList.toggle("has-rounded-cards", appearance.cardRadius > 0);
   document.body.style.setProperty("--accent", appearance.accentColor);
   document.body.style.setProperty("--line-hot", appearance.accentColor);
   document.body.style.setProperty("--accent-rgb", accentRgb.join(" "));
+  document.body.style.setProperty("--accent-text", rgbCss(accentText));
+  document.body.style.setProperty("--on-accent", onAccent);
   document.body.style.setProperty("--line", `rgba(${accentRgb.join(", ")}, 0.25)`);
   document.body.style.setProperty("--custom-background-opacity", String(appearance.backgroundOpacity));
   document.body.style.setProperty("--custom-background-blur", `${appearance.backgroundBlur}px`);
@@ -2088,6 +2093,53 @@ function hexToRgb(color) {
     Number.parseInt(normalized.slice(3, 5), 16),
     Number.parseInt(normalized.slice(5, 7), 16)
   ];
+}
+
+function relativeLuminance(rgb) {
+  return rgb.reduce((total, channel, index) => {
+    const normalized = channel / 255;
+    const linear = normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+    const weight = [0.2126, 0.7152, 0.0722][index];
+    return total + linear * weight;
+  }, 0);
+}
+
+function contrastRatio(firstRgb, secondRgb) {
+  const first = relativeLuminance(firstRgb);
+  const second = relativeLuminance(secondRgb);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function mixRgb(source, target, amount) {
+  return source.map((channel, index) => Math.round(channel + (target[index] - channel) * amount));
+}
+
+function accessibleAccentText(accentRgb, resolvedTheme) {
+  const background = resolvedTheme === "light" ? [248, 250, 245] : [10, 12, 9];
+  const target = resolvedTheme === "light" ? [5, 5, 5] : [255, 255, 255];
+
+  for (let step = 0; step <= 25; step += 1) {
+    const candidate = mixRgb(accentRgb, target, step / 25);
+    if (contrastRatio(candidate, background) >= 4.5) return candidate;
+  }
+
+  return target;
+}
+
+function bestContrastingText(backgroundRgb) {
+  const dark = [5, 5, 5];
+  const light = [255, 255, 255];
+  return contrastRatio(backgroundRgb, dark) >= contrastRatio(backgroundRgb, light)
+    ? "#050505"
+    : "#ffffff";
+}
+
+function rgbCss(rgb) {
+  return `rgb(${rgb.join(" ")})`;
 }
 
 function systemTheme() {
