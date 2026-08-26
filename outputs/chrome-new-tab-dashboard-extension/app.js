@@ -1951,7 +1951,7 @@ function applyI18n() {
   els.focusSearchResults.setAttribute("aria-label", t("focusSearchResultsLabel"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.0"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.1"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");
