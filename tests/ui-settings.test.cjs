@@ -137,6 +137,7 @@ function nonAppearanceSnapshot(state) {
   const defaults = api.getDefaultState();
   assert.equal(defaults.locale, "zh-CN");
   assert.equal(defaults.sortShortcutsByUsage, false);
+  assert.equal(defaults.appearance.cornerAccentsEnabled, false);
   assert.equal(api.normalizeLocale("zh"), "zh-CN");
   assert.equal(api.normalizeLocale("zhCN"), "zh-CN");
   assert.equal(api.normalizeLocale("en"), "en");
@@ -144,6 +145,8 @@ function nonAppearanceSnapshot(state) {
   assert.equal(api.translate("en", "customize"), "Customize");
   assert.equal(api.translate("zh-CN", "sortShortcutsByUsage"), "分类和网站按使用频次排序");
   assert.equal(api.translate("en", "sortShortcutsByUsage"), "Sort Categories and Websites by Usage");
+  assert.equal(api.translate("zh-CN", "cornerAccents"), "L 形直角装饰线");
+  assert.equal(api.translate("en", "cornerAccents"), "L-shaped Corner Accents");
 
   const customizeDialog = {
     getBoundingClientRect: () => ({ left: 600, right: 1280, top: 0, bottom: 800 })
@@ -288,6 +291,7 @@ function nonAppearanceSnapshot(state) {
     cardRadius: 99,
     panelRadius: -4,
     buttonRadius: 9,
+    cornerAccentsEnabled: true,
     fontScale: 1.08,
     cardDensity: "compact"
   });
@@ -296,6 +300,7 @@ function nonAppearanceSnapshot(state) {
   assert.equal(normalizedCircle.cardRadius, 24);
   assert.equal(normalizedCircle.panelRadius, 0);
   assert.equal(normalizedCircle.buttonRadius, 9);
+  assert.equal(normalizedCircle.cornerAccentsEnabled, true);
   assert.equal(normalizedCircle.fontScale, 1.08);
   assert.equal(normalizedCircle.cardDensity, "compact");
 
@@ -319,7 +324,7 @@ function nonAppearanceSnapshot(state) {
     api.contrastRatio(api.accessibleAccentText([248, 255, 74], "light"), [248, 250, 245]) >= 4.5,
     "light-mode accent text must meet the WCAG AA contrast target"
   );
-  assert.equal(bodyClassNames.has("has-rounded-cards"), true);
+  assert.equal(bodyClassNames.has("show-corner-accents"), true);
   assert.equal(body.dataset.cardDensity, "compact");
 
   const preset = api.createAppearancePreset("Shape Preset");
@@ -328,6 +333,7 @@ function nonAppearanceSnapshot(state) {
   assert.equal(preset.appearance.iconRadiusUnit, "percent");
   assert.equal(preset.appearance.cardRadius, 24);
   assert.equal(preset.appearance.buttonRadius, 9);
+  assert.equal(preset.appearance.cornerAccentsEnabled, true);
   assert.equal(preset.appearance.fontScale, 1.08);
   assert.equal(preset.appearance.cardDensity, "compact");
 
@@ -335,7 +341,13 @@ function nonAppearanceSnapshot(state) {
   squareCardState.appearance.cardRadius = 0;
   api.setState(squareCardState);
   api.applyAppearance();
-  assert.equal(bodyClassNames.has("has-rounded-cards"), false);
+  assert.equal(bodyClassNames.has("show-corner-accents"), true);
+
+  const hiddenCornerState = api.getState();
+  hiddenCornerState.appearance.cornerAccentsEnabled = false;
+  api.setState(hiddenCornerState);
+  api.applyAppearance();
+  assert.equal(bodyClassNames.has("show-corner-accents"), false);
 
   const backgroundImage = { id: "bg-1", image: "data:image/png;base64,AA==", accentColor: "#335577" };
   const stateForPreferences = api.getDefaultState();
@@ -344,6 +356,7 @@ function nonAppearanceSnapshot(state) {
     ...stateForPreferences.appearance,
     theme: "light",
     iconRadius: 14,
+    cornerAccentsEnabled: true,
     customBackgroundImages: [backgroundImage],
     activeCustomBackgroundId: "bg-1",
     background: "custom"
@@ -351,6 +364,7 @@ function nonAppearanceSnapshot(state) {
   const preferences = api.createUiPreferences(stateForPreferences);
   assert.equal(preferences.locale, "en");
   assert.equal(preferences.appearance.iconRadius, 14);
+  assert.equal(preferences.appearance.cornerAccentsEnabled, true);
   assert.equal(Object.hasOwn(preferences.appearance, "customBackgroundImages"), false);
   assert.doesNotMatch(JSON.stringify(preferences), /data:image/);
 
@@ -360,6 +374,7 @@ function nonAppearanceSnapshot(state) {
   assert.equal(merged.locale, "en");
   assert.equal(merged.appearance.theme, "light");
   assert.equal(merged.appearance.iconRadius, 14);
+  assert.equal(merged.appearance.cornerAccentsEnabled, true);
   assert.equal(merged.appearance.customBackgroundImages.length, 1);
   assert.equal(merged.appearance.customBackgroundImages[0].id, backgroundImage.id);
   assert.equal(merged.appearance.customBackgroundImages[0].image, backgroundImage.image);
@@ -379,6 +394,7 @@ function nonAppearanceSnapshot(state) {
     cardRadius: 20,
     panelRadius: 18,
     buttonRadius: 12,
+    cornerAccentsEnabled: true,
     fontScale: 1.2,
     cardDensity: "spacious"
   };
@@ -393,6 +409,7 @@ function nonAppearanceSnapshot(state) {
   assert.equal(resetState.appearance.iconRadius, 8);
   assert.equal(resetState.appearance.iconRadiusUnit, "px");
   assert.equal(resetState.appearance.cardRadius, 0);
+  assert.equal(resetState.appearance.cornerAccentsEnabled, false);
   assert.equal(resetState.appearance.fontScale, 1);
   assert.equal(resetState.appearance.cardDensity, "comfortable");
   assert.equal(resetState.activeAppearancePresetId, "");

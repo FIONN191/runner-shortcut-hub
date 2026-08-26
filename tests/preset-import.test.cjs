@@ -144,6 +144,7 @@ async function expectImportError(file, messageKey) {
   assert.equal(current.appearance.cardRadius, 8);
   assert.equal(current.appearance.panelRadius, 12);
   assert.equal(current.appearance.buttonRadius, 6);
+  assert.equal(current.appearance.cornerAccentsEnabled, false);
   assert.equal(current.appearance.fontScale, 1.08);
   assert.equal(current.appearance.cardDensity, "compact");
   assert.equal(nonAppearanceSnapshot(current), nonAppearanceBefore);
@@ -159,7 +160,11 @@ async function expectImportError(file, messageKey) {
     activePresetId: "multi-second",
     presets: [
       { id: "multi-first", name: "Multi First", appearance: { theme: "light", accentColor: "#2f7d26" } },
-      { id: "multi-second", name: "Multi Second", appearance: { theme: "system", accentColor: "#d62c86" } }
+      {
+        id: "multi-second",
+        name: "Multi Second",
+        appearance: { theme: "system", accentColor: "#d62c86", cornerAccentsEnabled: true }
+      }
     ]
   };
   const multiResult = await api.importPreset(importEnvelope(multiPreset));
@@ -167,6 +172,13 @@ async function expectImportError(file, messageKey) {
   assert.equal(multiResult.count, 2);
   assert.deepEqual(Array.from(current.appearancePresets.slice(-2), (preset) => preset.name), ["Multi First", "Multi Second"]);
   assert.equal(current.appearancePresets.find((preset) => preset.id === multiResult.applyPresetId).name, "Multi Second");
+  assert.equal(
+    current.appearancePresets.find((preset) => preset.id === multiResult.applyPresetId).appearance.cornerAccentsEnabled,
+    true
+  );
+  await api.applyAppearancePreset(multiResult.applyPresetId);
+  current = api.getState();
+  assert.equal(current.appearance.cornerAccentsEnabled, true);
 
   const missingWallpaper = {
     type: "runner-shortcut-hub-appearance-preset",

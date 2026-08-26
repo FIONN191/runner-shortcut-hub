@@ -28,7 +28,8 @@ assert.match(app, /document\.documentElement\.dataset\.theme\s*=\s*appearance\.d
 assert.match(app, /designTheme:\s*appearance\.designTheme/);
 assert.match(app, /function accessibleAccentText\(/);
 assert.match(app, /function bestContrastingText\(/);
-assert.match(app, /classList\.toggle\("has-rounded-cards", appearance\.cardRadius > 0\)/);
+assert.match(app, /cornerAccentsEnabled:\s*false/);
+assert.match(app, /classList\.toggle\("show-corner-accents", appearance\.cornerAccentsEnabled\)/);
 assert.match(app, /function classifyIconPixels\(/);
 assert.match(app, /dataset\.silhouetteSource/);
 assert.match(app, /icon-silhouette-opaque-light/);
@@ -51,7 +52,9 @@ assert.match(v2, /margin:\s*0 0 0 auto/);
 assert.match(v2, /body\[data-color-mode="light"\] \.search input::placeholder/);
 assert.match(v2, /color:\s*var\(--accent-text\)/);
 assert.match(v2, /color:\s*var\(--on-accent\)/);
-assert.match(read("styles.css"), /body\.has-rounded-cards \.shortcut-card::before/);
+assert.match(html, /id="cornerAccentsInput"[^>]+role="switch"/);
+assert.match(read("styles.css"), /body\.show-corner-accents :is\([^)]*\.shortcut-card[^)]*\)::before/);
+assert.doesNotMatch(app, /has-rounded-cards/);
 assert.match(v2, /@media \(prefers-reduced-motion: reduce\)/);
 
 console.log("Theme v2 tests passed");

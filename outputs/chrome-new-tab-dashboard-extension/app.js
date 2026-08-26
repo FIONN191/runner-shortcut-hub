@@ -30,6 +30,7 @@ const IMPORTED_APPEARANCE_FIELDS = new Set([
   "cardRadius",
   "panelRadius",
   "buttonRadius",
+  "cornerAccentsEnabled",
   "fontScale",
   "cardDensity"
 ]);
@@ -66,6 +67,7 @@ const defaultData = {
     cardRadius: 0,
     panelRadius: 0,
     buttonRadius: 0,
+    cornerAccentsEnabled: false,
     fontScale: 1,
     cardDensity: "comfortable"
   },
@@ -297,6 +299,9 @@ const els = {
   buttonRadiusLabel: document.querySelector("#buttonRadiusLabel"),
   buttonRadiusInput: document.querySelector("#buttonRadiusInput"),
   buttonRadiusValue: document.querySelector("#buttonRadiusValue"),
+  cornerAccentsLabel: document.querySelector("#cornerAccentsLabel"),
+  cornerAccentsDescription: document.querySelector("#cornerAccentsDescription"),
+  cornerAccentsInput: document.querySelector("#cornerAccentsInput"),
   fontScaleLabel: document.querySelector("#fontScaleLabel"),
   fontScaleInput: document.querySelector("#fontScaleInput"),
   fontScaleValue: document.querySelector("#fontScaleValue"),
@@ -481,6 +486,8 @@ const translations = {
     cardRadius: "网站卡片圆角",
     panelRadius: "面板圆角",
     buttonRadius: "按钮圆角",
+    cornerAccents: "L 形直角装饰线",
+    cornerAccentsDescription: "控制全站面板与卡片边角的加粗 L 形装饰线。",
     fontScale: "字体大小",
     cardDensity: "卡片密度",
     shortcutSettings: "快捷方式",
@@ -711,6 +718,8 @@ const translations = {
     cardRadius: "Website Card Radius",
     panelRadius: "Panel Radius",
     buttonRadius: "Button Radius",
+    cornerAccents: "L-shaped Corner Accents",
+    cornerAccentsDescription: "Show the bold L-shaped accents on panel and card corners across the interface.",
     fontScale: "Font Size",
     cardDensity: "Card Density",
     shortcutSettings: "Shortcuts",
@@ -1333,6 +1342,7 @@ function normalizeAppearance(appearance = {}) {
   const cardRadius = Math.round(clampNumber(appearance.cardRadius, 0, 24, defaultData.appearance.cardRadius));
   const panelRadius = Math.round(clampNumber(appearance.panelRadius, 0, 24, defaultData.appearance.panelRadius));
   const buttonRadius = Math.round(clampNumber(appearance.buttonRadius, 0, 24, defaultData.appearance.buttonRadius));
+  const cornerAccentsEnabled = appearance.cornerAccentsEnabled === true;
   const fontScale = Math.round(clampNumber(appearance.fontScale, 0.85, 1.2, defaultData.appearance.fontScale) * 100) / 100;
   const cardDensity = ["compact", "comfortable", "spacious"].includes(appearance.cardDensity)
     ? appearance.cardDensity
@@ -1353,6 +1363,7 @@ function normalizeAppearance(appearance = {}) {
     cardRadius,
     panelRadius,
     buttonRadius,
+    cornerAccentsEnabled,
     fontScale,
     cardDensity
   };
@@ -1425,6 +1436,7 @@ function compactAppearanceSnapshot(appearance) {
     cardRadius: appearance.cardRadius,
     panelRadius: appearance.panelRadius,
     buttonRadius: appearance.buttonRadius,
+    cornerAccentsEnabled: appearance.cornerAccentsEnabled,
     fontScale: appearance.fontScale,
     cardDensity: appearance.cardDensity
   };
@@ -1634,6 +1646,7 @@ function bindEvents() {
   els.cardRadiusInput.addEventListener("input", onCardRadiusInput);
   els.panelRadiusInput.addEventListener("input", onPanelRadiusInput);
   els.buttonRadiusInput.addEventListener("input", onButtonRadiusInput);
+  els.cornerAccentsInput.addEventListener("change", onCornerAccentsChange);
   els.fontScaleInput.addEventListener("input", onFontScaleInput);
   els.cardDensityOptions.addEventListener("click", onCardDensityOptionClick);
   els.sortShortcutsByUsageInput.addEventListener("change", onSortShortcutsByUsageChange);
@@ -1883,6 +1896,9 @@ function applyI18n() {
   els.cardRadiusLabel.textContent = t("cardRadius");
   els.panelRadiusLabel.textContent = t("panelRadius");
   els.buttonRadiusLabel.textContent = t("buttonRadius");
+  els.cornerAccentsLabel.textContent = t("cornerAccents");
+  els.cornerAccentsDescription.textContent = t("cornerAccentsDescription");
+  els.cornerAccentsInput.setAttribute("aria-label", t("cornerAccents"));
   els.fontScaleLabel.textContent = t("fontScale");
   els.cardDensityLabel.textContent = t("cardDensity");
   els.shortcutSettingsTitle.textContent = t("shortcutSettings");
@@ -2039,7 +2055,7 @@ function applyAppearance() {
   document.body.dataset.cardDensity = appearance.cardDensity;
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
   document.body.classList.toggle("has-panel-blur", appearance.panelBlur > 0);
-  document.body.classList.toggle("has-rounded-cards", appearance.cardRadius > 0);
+  document.body.classList.toggle("show-corner-accents", appearance.cornerAccentsEnabled);
   document.body.style.setProperty("--accent", appearance.accentColor);
   document.body.style.setProperty("--line-hot", appearance.accentColor);
   document.body.style.setProperty("--accent-rgb", accentRgb.join(" "));
@@ -2233,6 +2249,7 @@ function renderShapeControls() {
   els.panelRadiusValue.textContent = `${appearance.panelRadius}px`;
   els.buttonRadiusInput.value = String(appearance.buttonRadius);
   els.buttonRadiusValue.textContent = `${appearance.buttonRadius}px`;
+  els.cornerAccentsInput.checked = appearance.cornerAccentsEnabled;
   els.fontScaleInput.value = String(Math.round(appearance.fontScale * 100));
   els.fontScaleValue.textContent = `${Math.round(appearance.fontScale * 100)}%`;
 
@@ -3689,6 +3706,7 @@ function buildImportedAppearance(rawAppearance, currentAppearance, customBackgro
     cardRadius: rawAppearance.cardRadius ?? currentAppearance.cardRadius,
     panelRadius: rawAppearance.panelRadius ?? currentAppearance.panelRadius,
     buttonRadius: rawAppearance.buttonRadius ?? currentAppearance.buttonRadius,
+    cornerAccentsEnabled: rawAppearance.cornerAccentsEnabled === true,
     fontScale: rawAppearance.fontScale ?? currentAppearance.fontScale,
     cardDensity: rawAppearance.cardDensity || currentAppearance.cardDensity,
     customBackgroundImages
@@ -4052,6 +4070,11 @@ async function onPanelRadiusInput(event) {
 
 async function onButtonRadiusInput(event) {
   state.appearance.buttonRadius = Math.round(clampNumber(event.target.value, 0, 24, defaultData.appearance.buttonRadius));
+  await previewAndPersistShapeSettings();
+}
+
+async function onCornerAccentsChange(event) {
+  state.appearance.cornerAccentsEnabled = event.target.checked === true;
   await previewAndPersistShapeSettings();
 }
 

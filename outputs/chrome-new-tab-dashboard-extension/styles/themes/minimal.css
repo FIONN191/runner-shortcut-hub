@@ -89,21 +89,6 @@ html[data-theme="minimal"] .customize-modal > .modal-head {
   -webkit-backdrop-filter: none;
 }
 
-html[data-theme="minimal"] .brand::before,
-html[data-theme="minimal"] .brand::after,
-html[data-theme="minimal"] .search::before,
-html[data-theme="minimal"] .search::after,
-html[data-theme="minimal"] .system-panel::before,
-html[data-theme="minimal"] .system-panel::after,
-html[data-theme="minimal"] .workspace::before,
-html[data-theme="minimal"] .workspace::after,
-html[data-theme="minimal"] .modal::before,
-html[data-theme="minimal"] .modal::after,
-html[data-theme="minimal"] .shortcut-card::before,
-html[data-theme="minimal"] .shortcut-card::after {
-  display: none;
-}
-
 html[data-theme="minimal"] .brand-mark,
 html[data-theme="minimal"] .primary-button,
 html[data-theme="minimal"] .search-submit,

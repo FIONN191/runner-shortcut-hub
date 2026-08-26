@@ -242,6 +242,7 @@ body.has-panel-blur .search-history-panel {
 .modal::before,
 .shortcut-card::before {
   position: absolute;
+  display: none;
   inset: -1px auto auto -1px;
   width: 18px;
   height: 18px;
@@ -258,6 +259,7 @@ body.has-panel-blur .search-history-panel {
 .modal::after,
 .shortcut-card::after {
   position: absolute;
+  display: none;
   right: -1px;
   bottom: -1px;
   width: 18px;
@@ -268,9 +270,9 @@ body.has-panel-blur .search-history-panel {
   pointer-events: none;
 }
 
-body.has-rounded-cards .shortcut-card::before,
-body.has-rounded-cards .shortcut-card::after {
-  display: none;
+body.show-corner-accents :is(.brand, .search, .system-panel, .workspace, .modal, .shortcut-card)::before,
+body.show-corner-accents :is(.brand, .search, .system-panel, .workspace, .modal, .shortcut-card)::after {
+  display: block;
 }
 
 .brand {
