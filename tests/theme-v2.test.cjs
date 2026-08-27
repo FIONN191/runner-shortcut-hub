@@ -28,6 +28,10 @@ assert.match(app, /document\.documentElement\.dataset\.theme\s*=\s*appearance\.d
 assert.match(app, /designTheme:\s*appearance\.designTheme/);
 assert.match(app, /function accessibleAccentText\(/);
 assert.match(app, /function bestContrastingText\(/);
+assert.match(app, /function createAccentEffects\(/);
+assert.match(app, /style\.setProperty\("--accent-cyan", rgbCss\(accentRgb\)\)/);
+assert.match(app, /style\.setProperty\("--background-hover", accentEffects\.hover\)/);
+assert.match(app, /style\.setProperty\("--focus-ring", rgbCss\(accentRgb\)\)/);
 assert.match(app, /cornerAccentsEnabled:\s*false/);
 assert.match(app, /classList\.toggle\("show-corner-accents", appearance\.cornerAccentsEnabled\)/);
 assert.match(app, /function classifyIconPixels\(/);
@@ -52,6 +56,7 @@ assert.match(v2, /margin:\s*0 0 0 auto/);
 assert.match(v2, /body\[data-color-mode="light"\] \.search input::placeholder/);
 assert.match(v2, /color:\s*var\(--accent-text\)/);
 assert.match(v2, /color:\s*var\(--on-accent\)/);
+assert.match(v2, /\.category-button\[aria-current="true"\][\s\S]*background:\s*var\(--accent-active\)/);
 assert.match(html, /id="cornerAccentsInput"[^>]+role="switch"/);
 assert.match(read("styles.css"), /body\.show-corner-accents :is\([^)]*\.shortcut-card[^)]*\)::before/);
 assert.doesNotMatch(app, /has-rounded-cards/);

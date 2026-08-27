@@ -12,6 +12,11 @@
   --action-primary-hover: #e5ff4a;
   --action-danger: #ff4d45;
   --focus-ring: #6cf0ff;
+  --accent-soft: rgb(215 255 0 / 10%);
+  --accent-hover: rgb(215 255 0 / 16%);
+  --accent-active: rgb(215 255 0 / 24%);
+  --accent-border: rgb(215 255 0 / 25%);
+  --accent-border-strong: rgb(215 255 0 / 72%);
   --surface-shadow: none;
   --surface-backdrop: none;
   --grid-size: 72px;

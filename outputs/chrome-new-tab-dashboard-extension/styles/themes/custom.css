@@ -11,7 +11,7 @@ html[data-theme="custom"] {
   --action-primary: var(--accent);
   --action-primary-hover: var(--accent);
   --action-danger: #ff4d45;
-  --focus-ring: #6cf0ff;
+  --focus-ring: var(--accent);
   --surface-shadow: var(--shadow);
   --surface-backdrop: blur(var(--panel-blur)) saturate(1.08);
 }

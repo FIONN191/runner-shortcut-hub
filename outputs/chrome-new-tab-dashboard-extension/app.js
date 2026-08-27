@@ -2045,9 +2045,13 @@ function applyAppearance() {
   const appearance = normalizeAppearance(state.appearance);
   state.appearance = appearance;
   const resolvedTheme = appearance.theme === "system" ? systemTheme() : appearance.theme;
-  const accentRgb = hexToRgb(appearance.accentColor);
-  const accentText = accessibleAccentText(accentRgb, resolvedTheme);
+  const accentRgb = appearance.designTheme === "minimal"
+    ? [222, 222, 222]
+    : hexToRgb(appearance.accentColor);
+  const effectTheme = appearance.designTheme === "minimal" ? "dark" : resolvedTheme;
+  const accentText = accessibleAccentText(accentRgb, effectTheme);
   const onAccent = bestContrastingText(accentRgb);
+  const accentEffects = createAccentEffects(accentRgb, effectTheme);
   const activeCustomBackground = getActiveCustomBackground(appearance);
   document.documentElement.dataset.theme = appearance.designTheme;
   document.body.dataset.colorMode = resolvedTheme;
@@ -2056,12 +2060,25 @@ function applyAppearance() {
   document.body.classList.toggle("has-custom-background", appearance.background === "custom" && Boolean(activeCustomBackground));
   document.body.classList.toggle("has-panel-blur", appearance.panelBlur > 0);
   document.body.classList.toggle("show-corner-accents", appearance.cornerAccentsEnabled);
-  document.body.style.setProperty("--accent", appearance.accentColor);
-  document.body.style.setProperty("--line-hot", appearance.accentColor);
+  document.body.style.setProperty("--accent", rgbCss(accentRgb));
+  document.body.style.setProperty("--line-hot", rgbCss(accentRgb));
   document.body.style.setProperty("--accent-rgb", accentRgb.join(" "));
   document.body.style.setProperty("--accent-text", rgbCss(accentText));
   document.body.style.setProperty("--on-accent", onAccent);
-  document.body.style.setProperty("--line", `rgba(${accentRgb.join(", ")}, 0.25)`);
+  document.body.style.setProperty("--accent-cyan", rgbCss(accentRgb));
+  document.body.style.setProperty("--accent-violet", rgbCss(accentRgb));
+  document.body.style.setProperty("--accent-soft", accentEffects.soft);
+  document.body.style.setProperty("--accent-hover", accentEffects.hover);
+  document.body.style.setProperty("--accent-active", accentEffects.active);
+  document.body.style.setProperty("--accent-border", accentEffects.border);
+  document.body.style.setProperty("--accent-border-strong", accentEffects.borderStrong);
+  document.body.style.setProperty("--line", accentEffects.border);
+  document.body.style.setProperty("--background-hover", accentEffects.hover);
+  document.body.style.setProperty("--border-default", accentEffects.border);
+  document.body.style.setProperty("--border-strong", accentEffects.borderStrong);
+  document.body.style.setProperty("--action-primary", rgbCss(accentRgb));
+  document.body.style.setProperty("--action-primary-hover", accentEffects.primaryHover);
+  document.body.style.setProperty("--focus-ring", rgbCss(accentRgb));
   document.body.style.setProperty("--custom-background-opacity", String(appearance.backgroundOpacity));
   document.body.style.setProperty("--custom-background-blur", `${appearance.backgroundBlur}px`);
   document.body.style.setProperty("--icon-radius", appearance.iconRadiusUnit === "percent" ? "50%" : `${appearance.iconRadius}px`);
@@ -2132,6 +2149,20 @@ function contrastRatio(firstRgb, secondRgb) {
 
 function mixRgb(source, target, amount) {
   return source.map((channel, index) => Math.round(channel + (target[index] - channel) * amount));
+}
+
+function createAccentEffects(accentRgb, resolvedTheme) {
+  const isLight = resolvedTheme === "light";
+  const hoverTarget = isLight ? [0, 0, 0] : [255, 255, 255];
+
+  return {
+    soft: `rgb(${accentRgb.join(" ")} / ${isLight ? "9%" : "10%"})`,
+    hover: `rgb(${accentRgb.join(" ")} / ${isLight ? "14%" : "16%"})`,
+    active: `rgb(${accentRgb.join(" ")} / ${isLight ? "20%" : "24%"})`,
+    border: `rgb(${accentRgb.join(" ")} / ${isLight ? "28%" : "25%"})`,
+    borderStrong: `rgb(${accentRgb.join(" ")} / 72%)`,
+    primaryHover: rgbCss(mixRgb(accentRgb, hoverTarget, isLight ? 0.1 : 0.14))
+  };
 }
 
 function accessibleAccentText(accentRgb, resolvedTheme) {

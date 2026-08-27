@@ -101,6 +101,7 @@ globalThis.__uiTestApi = {
   savedShortcutMatchRank,
   accessibleAccentText,
   bestContrastingText,
+  createAccentEffects,
   contrastRatio,
   recordShortcutUse,
   resetAppearance,
@@ -320,12 +321,33 @@ function nonAppearanceSnapshot(state) {
   assert.equal(styleValues.get("--button-radius"), "9px");
   assert.equal(styleValues.get("--font-scale"), "1.08");
   assert.equal(styleValues.get("--on-accent"), "#050505");
+  assert.equal(styleValues.get("--accent"), "rgb(248 255 74)");
+  assert.equal(styleValues.get("--accent-cyan"), "rgb(248 255 74)");
+  assert.equal(styleValues.get("--focus-ring"), "rgb(248 255 74)");
+  assert.equal(styleValues.get("--background-hover"), "rgb(248 255 74 / 14%)");
+  assert.equal(styleValues.get("--border-strong"), "rgb(248 255 74 / 72%)");
+  assert.equal(styleValues.get("--action-primary"), "rgb(248 255 74)");
   assert.ok(
     api.contrastRatio(api.accessibleAccentText([248, 255, 74], "light"), [248, 250, 245]) >= 4.5,
     "light-mode accent text must meet the WCAG AA contrast target"
   );
   assert.equal(bodyClassNames.has("show-corner-accents"), true);
   assert.equal(body.dataset.cardDensity, "compact");
+
+  const darkEffects = api.createAccentEffects([52, 120, 212], "dark");
+  assert.equal(darkEffects.soft, "rgb(52 120 212 / 10%)");
+  assert.equal(darkEffects.hover, "rgb(52 120 212 / 16%)");
+  assert.equal(darkEffects.active, "rgb(52 120 212 / 24%)");
+
+  const minimalState = api.getState();
+  minimalState.appearance.designTheme = "minimal";
+  minimalState.appearance.accentColor = "#3478d4";
+  api.setState(minimalState);
+  styleValues.clear();
+  api.applyAppearance();
+  assert.equal(styleValues.get("--accent"), "rgb(222 222 222)");
+  assert.equal(styleValues.get("--accent-cyan"), "rgb(222 222 222)");
+  assert.equal(styleValues.get("--focus-ring"), "rgb(222 222 222)");
 
   const preset = api.createAppearancePreset("Shape Preset");
   assert.equal(preset.locale, "zh-CN");

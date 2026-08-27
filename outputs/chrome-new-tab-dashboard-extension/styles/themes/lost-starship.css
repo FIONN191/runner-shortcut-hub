@@ -2,16 +2,16 @@ html[data-theme="lost-starship"] {
   --background-page: #050505;
   --background-panel: #0a0c09;
   --background-card: #0d100c;
-  --background-hover: #14180f;
+  --background-hover: var(--accent-hover);
   --text-primary: #f4f5ef;
   --text-secondary: #969b8e;
   --text-muted: #62675d;
-  --border-default: rgb(215 255 0 / 28%);
-  --border-strong: rgb(215 255 0 / 72%);
-  --action-primary: #d7ff00;
-  --action-primary-hover: #e5ff4a;
+  --border-default: var(--accent-border);
+  --border-strong: var(--accent-border-strong);
+  --action-primary: var(--accent);
+  --action-primary-hover: var(--accent);
   --action-danger: #ff4d45;
-  --focus-ring: #6cf0ff;
+  --focus-ring: var(--accent);
   --surface-shadow: none;
   --surface-backdrop: none;
 }
@@ -21,7 +21,7 @@ html[data-theme="lost-starship"] body:not(.has-custom-background) {
   background-image:
     linear-gradient(90deg, rgb(var(--accent-rgb) / 7%) 1px, transparent 1px),
     linear-gradient(0deg, rgb(var(--accent-rgb) / 4%) 1px, transparent 1px),
-    linear-gradient(132deg, transparent 0 20%, rgb(var(--accent-rgb) / 7%) 20.1% 20.35%, transparent 20.5% 68%, rgb(108 240 255 / 5%) 68.1% 68.35%, transparent 68.5%);
+    linear-gradient(132deg, transparent 0 20%, rgb(var(--accent-rgb) / 7%) 20.1% 20.35%, transparent 20.5% 68%, rgb(var(--accent-rgb) / 5%) 68.1% 68.35%, transparent 68.5%);
   background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size), 100% 100%;
 }
 

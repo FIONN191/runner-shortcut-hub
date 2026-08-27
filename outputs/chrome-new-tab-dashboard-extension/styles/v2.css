@@ -8,7 +8,7 @@ body[data-color-mode="light"] {
   --background-page: #eef2ea;
   --background-panel: rgb(247 250 242 / 92%);
   --background-card: #f8faf5;
-  --background-hover: #e7edde;
+  --background-hover: var(--accent-hover);
   --text-primary: #11180e;
   --text-secondary: #4d5a47;
   --text-muted: #73806c;
@@ -191,7 +191,7 @@ body[data-color-mode="light"] .theme-color-option[aria-current="true"] {
 .rail-button:focus-visible,
 .rail-button.is-active {
   border-color: var(--border-strong);
-  color: #050505;
+  color: var(--on-accent);
   outline: none;
   background: var(--action-primary);
 }
@@ -252,6 +252,11 @@ body[data-color-mode="light"] .theme-color-option[aria-current="true"] {
 .category-button:focus-visible {
   border-color: var(--border-strong);
   background: var(--background-hover);
+}
+
+.category-button[aria-current="true"] {
+  border-color: var(--border-strong);
+  background: var(--accent-active);
 }
 
 .shortcut-card:focus-visible,

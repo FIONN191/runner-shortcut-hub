@@ -2,16 +2,16 @@ html[data-theme="liquid-glass"] {
   --background-page: #07131a;
   --background-panel: rgb(16 31 40 / 58%);
   --background-card: rgb(20 41 53 / 52%);
-  --background-hover: rgb(49 93 112 / 58%);
+  --background-hover: var(--accent-hover);
   --text-primary: #f5fbff;
   --text-secondary: #b7cbd4;
   --text-muted: #7795a2;
-  --border-default: rgb(185 229 242 / 22%);
-  --border-strong: rgb(204 244 255 / 68%);
-  --action-primary: #8ee8ff;
-  --action-primary-hover: #c7f5ff;
+  --border-default: var(--accent-border);
+  --border-strong: var(--accent-border-strong);
+  --action-primary: var(--accent);
+  --action-primary-hover: var(--accent);
   --action-danger: #ff746d;
-  --focus-ring: #d3f7ff;
+  --focus-ring: var(--accent);
   --surface-shadow: 0 20px 60px rgb(0 10 18 / 35%);
   --surface-backdrop: blur(22px) saturate(1.35);
 }
