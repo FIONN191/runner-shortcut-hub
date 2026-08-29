@@ -1048,6 +1048,33 @@ function hasChromeStorage() {
   return Boolean(globalThis.chrome?.storage?.local);
 }
 
+async function stabilizeCurrentTabZoom() {
+  const tabs = globalThis.chrome?.tabs;
+  if (
+    typeof tabs?.getCurrent !== "function"
+    || typeof tabs?.getZoom !== "function"
+    || typeof tabs?.setZoomSettings !== "function"
+    || typeof tabs?.setZoom !== "function"
+  ) {
+    return false;
+  }
+
+  try {
+    const tab = await tabs.getCurrent();
+    if (!Number.isInteger(tab?.id)) return false;
+
+    const zoomFactor = await tabs.getZoom(tab.id);
+    if (!Number.isFinite(zoomFactor) || zoomFactor <= 0) return false;
+
+    // Keep Chrome's normal zoom controls while isolating this tab from other origins.
+    await tabs.setZoomSettings(tab.id, { mode: "automatic", scope: "per-tab" });
+    await tabs.setZoom(tab.id, zoomFactor);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function readData() {
   if (!hasChromeStorage()) {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -1142,6 +1169,7 @@ async function boot() {
   needsDataMigration = false;
   setDate();
   bindEvents();
+  const zoomStabilization = stabilizeCurrentTabZoom();
 
   try {
     const saved = await readData();
@@ -1158,6 +1186,7 @@ async function boot() {
     await writeData();
   }
 
+  await zoomStabilization;
   render();
   writeUiPreferences(state);
   scheduleBackgroundStorageOptimization();
@@ -1951,7 +1980,7 @@ function applyI18n() {
   els.focusSearchResults.setAttribute("aria-label", t("focusSearchResultsLabel"));
   els.footerStatus.textContent = t("footerReady");
   els.footerTheme.textContent = t("footerTheme", { theme: getDesignThemeLabel(state.appearance.designTheme) });
-  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.1"}`;
+  els.footerVersion.textContent = `v${chrome.runtime?.getManifest?.().version || "2.2.2"}`;
   els.feedbackCloseBtn.title = t("closeDialog");
   els.feedbackCloseBtn.setAttribute("aria-label", t("closeDialog"));
   els.feedbackCancelBtn.textContent = t("cancel");

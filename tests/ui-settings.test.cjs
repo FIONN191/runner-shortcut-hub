@@ -103,6 +103,7 @@ globalThis.__uiTestApi = {
   bestContrastingText,
   createAccentEffects,
   contrastRatio,
+  stabilizeCurrentTabZoom,
   recordShortcutUse,
   resetAppearance,
   getState: () => clone(state),
@@ -139,6 +140,36 @@ function nonAppearanceSnapshot(state) {
   assert.equal(defaults.locale, "zh-CN");
   assert.equal(defaults.sortShortcutsByUsage, false);
   assert.equal(defaults.appearance.cornerAccentsEnabled, false);
+
+  const zoomCalls = [];
+  context.chrome = {
+    tabs: {
+      getCurrent: async () => ({ id: 42 }),
+      getZoom: async (tabId) => {
+        zoomCalls.push(["getZoom", tabId]);
+        return 0.8;
+      },
+      setZoomSettings: async (tabId, settings) => {
+        zoomCalls.push(["setZoomSettings", tabId, settings]);
+      },
+      setZoom: async (tabId, zoomFactor) => {
+        zoomCalls.push(["setZoom", tabId, zoomFactor]);
+      }
+    }
+  };
+  assert.equal(await api.stabilizeCurrentTabZoom(), true);
+  assert.deepEqual(clone(zoomCalls), [
+    ["getZoom", 42],
+    ["setZoomSettings", 42, { mode: "automatic", scope: "per-tab" }],
+    ["setZoom", 42, 0.8]
+  ]);
+
+  context.chrome.tabs.getCurrent = async () => undefined;
+  assert.equal(await api.stabilizeCurrentTabZoom(), false);
+  context.chrome.tabs.getCurrent = async () => { throw new Error("tabs unavailable"); };
+  assert.equal(await api.stabilizeCurrentTabZoom(), false);
+  delete context.chrome;
+
   assert.equal(api.normalizeLocale("zh"), "zh-CN");
   assert.equal(api.normalizeLocale("zhCN"), "zh-CN");
   assert.equal(api.normalizeLocale("en"), "en");
